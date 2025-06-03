@@ -1,0 +1,1 @@
+This is the Wuthering Waves AI translator for vietnamese players.

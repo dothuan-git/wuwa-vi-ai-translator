@@ -1,9 +1,15 @@
 import json
 import re
-
+import os
 
 with open('characters.json', 'r', encoding='utf-8') as f:
         characters = json.load(f)
+
+
+# Create folder if it doesn't exist
+def check_create_folder(folder_path):
+    if not os.path.exists(folder_path):
+        os.makedirs(folder_path)
 
 
 # Standardize dialog format

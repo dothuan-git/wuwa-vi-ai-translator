@@ -6,6 +6,8 @@ import easyocr
 import requests
 from PIL import Image, ImageOps, ImageEnhance
 
+from utils import check_create_folder
+
 
 # ============================= GLOBAL PARAMS =============================
 with open("config.json", "r", encoding='utf-8') as f:
@@ -28,6 +30,7 @@ def extract_text_from_image(pil_img):
 
     # 2x upscale using LANCZOS (best for sharp edges)
     img = img.resize((img.width * 2, img.height * 2), Image.LANCZOS)
+    check_create_folder("asset_tmp")
     img.save("asset_tmp\\temp_capture.png")
 
     # OCR
