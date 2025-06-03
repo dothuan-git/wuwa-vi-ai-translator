@@ -1,0 +1,19 @@
+# Ignore virtual environment folders
+venv/
+.venv/
+env/
+ENV/
+
+# Ignore config.json
+config.json
+
+# Ignore __pycache__ and other Python junk
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Ignore OS files
+.vscode/
+.DS_Store
+Thumbs.db
