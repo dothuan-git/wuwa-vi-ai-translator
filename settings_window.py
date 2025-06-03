@@ -3,8 +3,11 @@ from tkinter import ttk, messagebox
 import json
 import os
 
-CHARACTERS_PATH = "characters.json"
-CONFIG_PATH = "config copy.json"
+from utils import resource_path
+
+
+CHARACTERS_PATH = resource_path("characters.json")
+CONFIG_PATH = resource_path("config.json")
 
 
 # Helper function for show/hide key entries

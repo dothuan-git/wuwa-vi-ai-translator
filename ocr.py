@@ -6,11 +6,11 @@ import easyocr
 import requests
 from PIL import Image, ImageOps, ImageEnhance
 
-from utils import check_create_folder
+from utils import check_create_folder, resource_path
 
 
 # ============================= GLOBAL PARAMS =============================
-with open("config.json", "r", encoding='utf-8') as f:
+with open(resource_path("config.json"), "r", encoding="utf-8") as f:
     config = json.load(f)
 
 # Initialize EasyOCR

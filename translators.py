@@ -6,7 +6,7 @@ from utils import *
 
 
 # ============================= GLOBAL PARAMS =============================
-with open("config.json", "r", encoding='utf-8') as f:
+with open(resource_path("config.json"), "r", encoding="utf-8") as f:
     config = json.load(f)
 
 # Groq API settings

@@ -1,9 +1,21 @@
 import json
 import re
 import os
+import sys
 
-with open('characters.json', 'r', encoding='utf-8') as f:
-        characters = json.load(f)
+# Ensure the script is run from the correct directory
+def resource_path(relative_path):
+    """Get absolute path to resource, works for dev and for PyInstaller."""
+    try:
+        base_path = sys._MEIPASS
+    except AttributeError:
+        base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, relative_path)
+
+
+with open(resource_path("characters.json"), "r", encoding="utf-8") as f:
+    characters = json.load(f)
 
 
 # Create folder if it doesn't exist
@@ -21,18 +33,20 @@ def standardize_dialog(lines):
         return ""
 
     # If original list had 'F', we use Rover
-    speaker = "Rover" if 'F' in cleaned else cleaned[0]
-
-    # If speaker is Rover, get 1st line only
-    if speaker == "Rover":
+    if 'F' in cleaned:
+        speaker = "Rover"
         remove_F = [line for line in cleaned if line.strip() != 'F']
         full_text = ' '.join(remove_F)
         full_text = re.sub(r'\s+', ' ', full_text).strip()
         dialogue = re.sub(r'([.?!])\s+', r'\1\n', full_text)
-    elif speaker in characters:
-        dialogue = " ".join(cleaned[1:]) if len(cleaned) > 1 else ""
     else:
-        dialogue = lines
+        speaker = cleaned[0]
+        dialogue = " ".join(cleaned[1:]) if len(cleaned) > 1 else ""
+
+    # if speaker in characters:
+    #     dialog = f"{speaker}: {dialogue.strip()}"
+    # else:
+    #     dialog = lines.strip()
 
     return speaker, dialogue
 
