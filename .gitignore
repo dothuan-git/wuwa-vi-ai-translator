@@ -6,6 +6,7 @@ ENV/
 
 # Ignore config.json
 config.json
+characters.json
 
 # Ignore __pycache__ and other Python junk
 __pycache__/
@@ -18,3 +19,8 @@ __pycache__/
 .DS_Store
 Thumbs.db
 backup/
+
+# Ignore build artifacts
+dist/
+build/
+main.spec

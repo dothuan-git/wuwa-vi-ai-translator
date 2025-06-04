@@ -1,14 +1,20 @@
 [Setup]
-AppName=Wuwa AI Translator
-AppVersion=1.0
-DefaultDirName={pf}\WuwaAITrans
-DefaultGroupName=WuwaAITrans
+AppName=GioHuAI Translator
+AppVersion=0.1
+DefaultDirName={pf}\GioHuAI
+DefaultGroupName=GioHuAI
 OutputDir=.
-OutputBaseFilename=WuwaAITrans_Setup
+OutputBaseFilename=GioHuAI_Setup
+Compression=lzma
+SolidCompression=yes
 
 [Files]
-Source: "dist\main\*"; DestDir: "{app}"; Flags: recursesubdirs
-Source: "dist\main\characters.json"; DestDir: "{app}"
+Source: "dist\main\*"; DestDir: "{app}"; Flags: recursesubdirs ignoreversion
+Source: "asset\icon.ico"; DestDir: "{app}"
 
 [Icons]
-Name: "{group}\WuwaAITrans"; Filename: "{app}\main.exe"
+Name: "{group}\GioHuAI"; Filename: "{app}\main.exe"; IconFilename: "{app}\icon.ico"
+Name: "{commondesktop}\GioHuAI"; Filename: "{app}\main.exe"; IconFilename: "{app}\icon.ico"; Tasks: desktopicon
+
+[Tasks]
+Name: "desktopicon"; Description: "Create a &desktop shortcut"; GroupDescription: "Additional icons:"

@@ -14,14 +14,16 @@ def resource_path(relative_path):
     return os.path.join(base_path, relative_path)
 
 
-with open(resource_path("characters.json"), "r", encoding="utf-8") as f:
-    characters = json.load(f)
-
-
 # Create folder if it doesn't exist
 def check_create_folder(folder_path):
     if not os.path.exists(folder_path):
         os.makedirs(folder_path)
+
+
+# Read json file
+def read_json(file_path):
+    with open(resource_path(file_path), "r", encoding="utf-8") as f:
+        return json.load(f)
 
 
 # Standardize dialog format
@@ -57,6 +59,7 @@ def get_gender(characters, name):
 
 
 # Build prompt with pronouns based on speaker and listener
+characters = read_json("characters.json")
 def build_prompt_with_pronouns(user_prompt, custom_prompt, dialogue, speaker_name):
     # Setup names
     listener_name = "Rover"

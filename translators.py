@@ -6,8 +6,7 @@ from utils import *
 
 
 # ============================= GLOBAL PARAMS =============================
-with open(resource_path("config.json"), "r", encoding="utf-8") as f:
-    config = json.load(f)
+config = read_json("config.json")
 
 # Groq API settings
 GROQ_API_KEY = config["groq_api_key"]
@@ -16,7 +15,6 @@ GROQ_URL     = config["groq_api_url"]
 # Retrieve prompts from config
 system_prompt = config["system_prompt"]
 user_prompt   = config["user_prompt"]
-custom_prompt = config["custom_prompt"]
 # =========================================================================
 
 
@@ -26,6 +24,7 @@ def translate_with_llama3(dialogue, speaker):
         return "Không phát hiện văn bản."
     
     # Build the refined prompt with pronouns
+    custom_prompt = read_json("config.json")["custom_prompt"]
     refined_prompt = build_prompt_with_pronouns(user_prompt, custom_prompt, dialogue, speaker)
 
     headers = {
