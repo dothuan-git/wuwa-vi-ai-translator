@@ -6,7 +6,6 @@ ENV/
 
 # Ignore config.json
 config.json
-characters.json
 
 # Ignore __pycache__ and other Python junk
 __pycache__/

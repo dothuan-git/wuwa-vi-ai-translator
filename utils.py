@@ -38,19 +38,21 @@ def standardize_dialog(lines):
     if 'F' in cleaned:
         speaker = "Rover"
         remove_F = [line for line in cleaned if line.strip() != 'F']
+        lines = "\n".join(remove_F).strip()
         full_text = ' '.join(remove_F)
         full_text = re.sub(r'\s+', ' ', full_text).strip()
-        dialogue = re.sub(r'([.?!])\s+', r'\1\n', full_text)
+        dialogue = re.sub(r'([.?!)])\s+', r'\1\n', full_text)
     else:
         speaker = cleaned[0]
-        dialogue = " ".join(cleaned[1:]) if len(cleaned) > 1 else ""
+        dialogue = "\n".join(cleaned[1:]) if len(cleaned) > 1 else ""
+        dialogue = re.sub(r'\s+', ' ', dialogue).strip()
 
-    # if speaker in characters:
-    #     dialog = f"{speaker}: {dialogue.strip()}"
-    # else:
-    #     dialog = lines.strip()
+    if speaker in characters:
+        dialog = f"{speaker}: {dialogue.strip()}"
+    else:
+        dialog = lines.strip()
 
-    return speaker, dialogue
+    return speaker, dialog, lines
 
 
 # Get character gender
@@ -78,7 +80,7 @@ def build_prompt_with_pronouns(user_prompt, custom_prompt, dialogue, speaker_nam
         gender_hint = ""
     elif speaker_gender == "unknown":
         gender_hint = (
-            f"\n\nCharacter context:\n"
+            f"\nCharacter context:\n"
             f"- Speaker: {speaker_name} (gender: unknown)\n"
             f"- Listener: {listener_name} (gender: {listener_gender})\n"
             f"- Infer speaker gender from their name, then apply appropriate Vietnamese pronouns based on gender of speaker and listener."
@@ -88,7 +90,7 @@ def build_prompt_with_pronouns(user_prompt, custom_prompt, dialogue, speaker_nam
         you_pronoun = pronouns[speaker_gender][f"you_to_{listener_gender}"]
 
         gender_hint = (
-            f"\n\nCharacter context:\n"
+            f"\nCharacter context:\n"
             f"- Speaker: {speaker_name} (gender: {speaker_gender})\n"
             f"- Listener: {listener_name} (gender: {listener_gender})\n"
             f"- Translate first-person \"I\" as \"{i_pronoun}\" and second-person \"you\" as \"{you_pronoun}\" in Vietnamese."

@@ -26,6 +26,8 @@ def translate_with_llama3(dialogue, speaker):
     # Build the refined prompt with pronouns
     custom_prompt = read_json("config.json")["custom_prompt"]
     refined_prompt = build_prompt_with_pronouns(user_prompt, custom_prompt, dialogue, speaker)
+    print("-------------------------")
+    print(f"{refined_prompt}")
 
     headers = {
         "Authorization": f"Bearer {GROQ_API_KEY}",
@@ -33,7 +35,7 @@ def translate_with_llama3(dialogue, speaker):
     }
 
     payload = {
-        "model": "llama3-70b-8192",
+        "model": "meta-llama/llama-4-scout-17b-16e-instruct",
         "messages": [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": refined_prompt}

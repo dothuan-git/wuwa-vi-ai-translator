@@ -39,6 +39,7 @@ def extract_text_from_image(pil_img):
     return raw_text
 
 
+# OCR with Google Vision API
 def extract_text_with_google_ocr(img):
     try:
         # Convert image to base64
@@ -55,9 +56,12 @@ def extract_text_with_google_ocr(img):
                     },
                     "features": [
                         {
-                            "type": "TEXT_DETECTION"
+                            "type": "DOCUMENT_TEXT_DETECTION"
                         }
-                    ]
+                    ],
+                    "imageContext": {
+                        "languageHints": ["en"]
+                    }
                 }
             ]
         }

@@ -88,8 +88,7 @@ def capture_and_translate():
             text = extract_text_from_image(img)
 
         if text.strip():
-            speaker, dialogue = standardize_dialog(text)
-            dialog = f"{speaker}: {dialogue.strip()}"
+            speaker, dialog, text = standardize_dialog(text)
             full_log.append(dialog)
 
             # Update log window if it's open
@@ -99,7 +98,7 @@ def capture_and_translate():
                 log_text_area.config(state="disabled")
                 log_text_area.see(tk.END)
 
-        translated = translate_with_llama3(dialogue, speaker) if dialogue.strip() else "Không phát hiện văn bản."
+        translated = translate_with_llama3(text, speaker) if text.strip() else "Không phát hiện văn bản."
         text_area.delete(1.0, tk.END)
         text_area.insert(tk.END, dialog if dialog.strip() else "No text detected.", "center")
         translated_text_area.delete(1.0, tk.END)
@@ -109,12 +108,12 @@ def capture_and_translate():
 # Translate text from original dialog
 def translate_original_text():
     dialog = text_area.get(1.0, tk.END).strip()
-    speaker = dialog.split(":")[0]
-    dialogue = dialog.split(":")[1].strip()
+    speaker = dialog.split(":")[0] if ":" in dialog else dialog.split("\n")[0]
 
-    translated = translate_with_llama3(dialogue, speaker) if dialogue.strip() else "Không phát hiện văn bản."
+    translated = translate_with_llama3(dialog, speaker) if dialog.strip() else "Không phát hiện văn bản."
     translated_text_area.delete(1.0, tk.END)
     translated_text_area.insert(tk.END, translated, "center")
+
 
 # Toggle log window visibility
 def toggle_log_window():
@@ -341,8 +340,8 @@ translated_text_area = tk.Text(
     padx=30,
     pady=10,
     # spacing1=10,   # Space above lines
-    spacing2=8,    # line spacing between wrapped lines in a paragraph
-    spacing3=15    # Space below lines
+    spacing2=3,    # line spacing between wrapped lines in a paragraph
+    spacing3=10    # Space below lines
 )
 translated_text_area.grid(row=0, column=0, sticky="nsew", padx=5, pady=2)
 translated_text_area.tag_configure("center", justify="center")
