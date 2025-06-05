@@ -19,6 +19,7 @@ __pycache__/
 .DS_Store
 Thumbs.db
 backup/
+asset/
 
 # Ignore build artifacts
 dist/

@@ -10,14 +10,9 @@ from default_params import DEFAULT_CONFIG
 
 
 # ============================= GLOBAL PARAMS =============================
-CONFIG_PATH = get_appdata_file_path("config.json")
-config = read_json("config.json")
-
 # Initialize EasyOCR
 reader = easyocr.Reader(DEFAULT_CONFIG["easyocr_lg"])
 
-# Google OCR API settings
-GOOGLE_OCR_API_KEY = config["google_ocr_api_key"]
 # =========================================================================
 
 
@@ -30,17 +25,23 @@ def extract_text_from_image(pil_img):
 
     # 2x upscale using LANCZOS (best for sharp edges)
     img = img.resize((img.width * 2, img.height * 2), Image.LANCZOS)
-    check_create_folder("asset_tmp")
-    img.save("asset_tmp\\temp_capture.png")
+
+    # Save to temporary folder
+    screenshot_folder = get_appdata_file_path("asset_tmp")
+    check_create_folder(screenshot_folder)
+    img.save(f"{screenshot_folder}\\temp_capture.png")
 
     # OCR
-    result = reader.readtext("asset_tmp\\temp_capture.png", detail=0, paragraph=True)
+    result = reader.readtext(f"{screenshot_folder}\\temp_capture.png", detail=0, paragraph=True)
     raw_text = '\n'.join(result)
     return raw_text
 
 
 # OCR with Google Vision API
 def extract_text_with_google_ocr(img):
+    # Google OCR API settings
+    GOOGLE_OCR_API_KEY = read_json("config.json")["google_ocr_api_key"]
+
     try:
         # Convert image to base64
         buffer = io.BytesIO()

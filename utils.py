@@ -3,16 +3,6 @@ import re
 import os
 import sys
 
-# Ensure the script is run from the correct directory
-def resource_path(relative_path):
-    """Get absolute path to resource, works for dev and for PyInstaller."""
-    try:
-        base_path = sys._MEIPASS
-    except AttributeError:
-        base_path = os.path.abspath(".")
-
-    return os.path.join(base_path, relative_path)
-
 
 # Create folder if it doesn't exist
 def check_create_folder(folder_path):
@@ -33,13 +23,13 @@ def get_appdata_file_path(file_path):
 # Read json file
 def read_json(file_path):
     path = get_appdata_file_path(file_path)
-    print(f"Reading JSON file: {path}")
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
 
 
 # Standardize dialog format
 def standardize_dialog(lines):
+    characters = read_json("characters.json")
     cleaned = lines.strip().split('\n')
     print(cleaned)
 
@@ -73,40 +63,49 @@ def get_gender(characters, name):
 
 
 # Build prompt with pronouns based on speaker and listener
-characters = read_json("characters.json")
-def build_prompt_with_pronouns(user_prompt, custom_prompt, dialogue, speaker_name):
-    # Setup names
-    listener_name = "Rover"
-    listener_gender = get_gender(characters, listener_name)
-    speaker_gender = get_gender(characters, speaker_name)
+def build_prompt_with_pronouns(user_prompt, dialogue, speaker_name):
+    characters    = read_json("characters.json")
+    config        = read_json("config.json")
+    custom_prompt = config["custom_prompt"]
+    vi_pronoun    = config["vi_pronoun"]
 
-    # Define pronouns
-    pronouns = {
-        "male": {"I": "anh", "you_to_male": "cậu", "you_to_female": "em"},
-        "female": {"I": "em", "you_to_male": "anh", "you_to_female": "em"},
-        "unknown": {"I": "tôi", "you": "bạn"}
-    }
 
-    # Add pronoun instruction only if speaker gender is known
-    if speaker_name == "Rover":
-        gender_hint = ""
-    elif speaker_gender == "unknown":
-        gender_hint = (
-            f"\nCharacter context:\n"
-            f"- Speaker: {speaker_name} (gender: unknown)\n"
-            f"- Listener: {listener_name} (gender: {listener_gender})\n"
-            f"- Infer speaker gender from their name, then apply appropriate Vietnamese pronouns based on gender of speaker and listener."
-        )
+    if vi_pronoun:
+        # Setup names
+        listener_name = "Rover"
+        listener_gender = get_gender(characters, listener_name)
+        speaker_gender = get_gender(characters, speaker_name)
+
+        # Define pronouns
+        pronouns = {
+            "male": {"I": "anh", "you_to_male": "cậu", "you_to_female": "em", "you_to_unknown": "bạn"},
+            "female": {"I": "em", "you_to_male": "anh", "you_to_female": "em", "you_to_unknown": "bạn"},
+            "unknown": {"I": "tôi", "you": "bạn"}
+        }
+
+        # Add pronoun instruction only if speaker gender is known
+        if speaker_name == "Rover":
+            gender_hint = ""
+        elif speaker_gender == "unknown":
+            gender_hint = (
+                f"\nCharacter context:\n"
+                f"- Speaker: {speaker_name} (gender: unknown)\n"
+                f"- Listener: {listener_name} (gender: {listener_gender})\n"
+                f"- Infer speaker gender from their name, then apply appropriate Vietnamese pronouns based on gender of speaker and listener."
+            )
+        else:
+            i_pronoun = pronouns[speaker_gender]["I"]
+            you_pronoun = pronouns[speaker_gender][f"you_to_{listener_gender}"]
+
+            gender_hint = (
+                f"\nCharacter context:\n"
+                f"- Speaker: {speaker_name} (gender: {speaker_gender})\n"
+                f"- Listener: {listener_name} (gender: {listener_gender})\n"
+                f"- Translate first-person \"I\" as \"{i_pronoun}\" and second-person \"you\" as \"{you_pronoun}\" in Vietnamese."
+            )
     else:
-        i_pronoun = pronouns[speaker_gender]["I"]
-        you_pronoun = pronouns[speaker_gender][f"you_to_{listener_gender}"]
+        gender_hint = ""
 
-        gender_hint = (
-            f"\nCharacter context:\n"
-            f"- Speaker: {speaker_name} (gender: {speaker_gender})\n"
-            f"- Listener: {listener_name} (gender: {listener_gender})\n"
-            f"- Translate first-person \"I\" as \"{i_pronoun}\" and second-person \"you\" as \"{you_pronoun}\" in Vietnamese."
-        )
 
     # Final prompt
     if len(custom_prompt.strip()) > 4:

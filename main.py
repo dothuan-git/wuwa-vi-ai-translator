@@ -108,7 +108,7 @@ def capture_and_translate():
 # Translate text from original dialog
 def translate_original_text():
     dialog = text_area.get(1.0, tk.END).strip()
-    speaker = dialog.split(":")[0] if ":" in dialog else dialog.split("\n")[0]
+    speaker = dialog.split("\n")[0]
 
     translated = translate_with_llama3(dialog, speaker) if dialog.strip() else "Không phát hiện văn bản."
     translated_text_area.delete(1.0, tk.END)

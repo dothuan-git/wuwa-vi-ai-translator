@@ -4,9 +4,10 @@ AppVersion=0.1
 DefaultDirName={pf}\GioHuAI
 DefaultGroupName=GioHuAI
 OutputDir=.
-OutputBaseFilename=GioHuAI_Setup
+OutputBaseFilename=GioHuAI_v0.1_Setup
 Compression=lzma
 SolidCompression=yes
+SetupIconFile=asset\icon_installer.ico
 
 [Files]
 ; App files to Program Files
