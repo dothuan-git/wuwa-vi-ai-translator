@@ -3,11 +3,11 @@ from tkinter import ttk, messagebox
 import json
 import os
 
-from utils import resource_path
+from utils import get_appdata_file_path
 
 
-CHARACTERS_PATH = resource_path("characters.json")
-CONFIG_PATH = resource_path("config.json")
+CHARACTERS_PATH = get_appdata_file_path("characters.json")
+CONFIG_PATH = get_appdata_file_path("config.json")
 
 
 # Helper function for show/hide key entries
@@ -68,6 +68,7 @@ def open_settings_window(master):
     rover_gender_var = tk.StringVar(value="male")
     google_ocr_var = tk.StringVar()
     groq_api_var = tk.StringVar()
+    vietnamese_pronoun_var = tk.BooleanVar()
 
     # --- Load existing values ---
     chars = {}
@@ -84,6 +85,7 @@ def open_settings_window(master):
         google_ocr_var.set(config.get("google_ocr_api_key", ""))
         groq_api_var.set(config.get("groq_api_key", ""))
         custom_prompt = config.get("custom_prompt", "")
+        vietnamese_pronoun_var.set(config.get("vietnamese_pronoun", False))
 
     # --- Main Frame Layout ---
     frm = tk.Frame(window, bg=WINDOW_BG)
@@ -105,19 +107,25 @@ def open_settings_window(master):
     # show_google_btn.grid(row=5, column=1, sticky='w', padx=(4,0))
 
     # --- GROQ API Key ---
-    tk.Label(frm, text="GROQ API KEY:", bg=LABEL_BG, fg=LABEL_FG).grid(row=6, column=0, sticky='w')
+    tk.Label(frm, text="GROQ API KEY*:", bg=LABEL_BG, fg=LABEL_FG).grid(row=6, column=0, sticky='w')
     groq_api_entry = tk.Entry(frm, textvariable=groq_api_var, bg="#e8f0fe", fg="#222B38", show="*")
     groq_api_entry.grid(row=7, column=0, sticky='ew', pady=(0,8))
     # show_groq_btn = tk.Button(frm, text="👁", width=2,
     #                         command=lambda: toggle_entry_show(groq_api_entry, groq_api_var, show_groq_btn))
     # show_groq_btn.grid(row=7, column=1, sticky='w', padx=(4,0))
 
-    tk.Label(frm, text="Custom Prompt:").grid(row=8, column=0, sticky='w', pady=(8,0))
+    ttk.Checkbutton(
+        frm, 
+        text="Vietnamese pronoun (refine prompt for correct xưng hô)", 
+        variable=vietnamese_pronoun_var
+    ).grid(row=8, column=0, sticky="w", pady=(8, 0))
 
+    tk.Label(frm, text="Custom Prompt:").grid(row=9, column=0, sticky='w', pady=(8,0))
+    
     # --- Scalable custom_prompt box ---
     custom_prompt_txt = tk.Text(frm, height=6, wrap="word")
-    custom_prompt_txt.grid(row=9, column=0, sticky='nsew', pady=(0,8))
-    frm.rowconfigure(9, weight=1)
+    custom_prompt_txt.grid(row=10, column=0, sticky='nsew', pady=(0,8))
+    frm.rowconfigure(10, weight=1)
     custom_prompt_txt.insert('1.0', custom_prompt)
 
     def save_settings():
@@ -125,27 +133,24 @@ def open_settings_window(master):
         rover_gender = rover_gender_var.get().strip()
         google_key = google_ocr_var.get().strip()
         groq_key = groq_api_var.get().strip()
+        vietnamese_pronoun = vietnamese_pronoun_var.get()
         custom_prompt_val = custom_prompt_txt.get("1.0", "end-1c").strip()
 
         # --- Save to characters.json ---
-        # Always update "Rover" gender
         chars["Rover"] = {"gender": rover_gender}
-
-        # If Rover name is provided and not 'Rover'
         if rover_name:
             if rover_name in chars:
-                # Only update gender if already exists
                 chars[rover_name]["gender"] = rover_gender
             else:
-                # Create new entry for custom Rover name
                 chars[rover_name] = {"gender": rover_gender}
-
+        # Create file if not exists
         with open(CHARACTERS_PATH, "w", encoding="utf-8") as f:
             json.dump(chars, f, indent=2, ensure_ascii=False)
 
         # --- Save to config.json ---
         config["google_ocr_api_key"] = google_key
         config["groq_api_key"] = groq_key
+        config["vietnamese_pronoun"] = vietnamese_pronoun
         config["custom_prompt"] = custom_prompt_val
         with open(CONFIG_PATH, "w", encoding="utf-8") as f:
             json.dump(config, f, indent=4, ensure_ascii=False)

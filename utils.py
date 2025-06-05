@@ -20,9 +20,21 @@ def check_create_folder(folder_path):
         os.makedirs(folder_path)
 
 
+# Get the appdata path to the json file
+def get_appdata_file_path(file_path):
+    # Use %APPDATA% for config storage
+    APPDATA_DIR = os.getenv("APPDATA") or os.path.expanduser("~")
+    APP_FOLDER = os.path.join(APPDATA_DIR, "GioHuAI")  # Use a subfolder for your app
+    os.makedirs(APP_FOLDER, exist_ok=True)  # Ensure folder exists
+
+    return os.path.join(APP_FOLDER, file_path)
+
+
 # Read json file
 def read_json(file_path):
-    with open(resource_path(file_path), "r", encoding="utf-8") as f:
+    path = get_appdata_file_path(file_path)
+    print(f"Reading JSON file: {path}")
+    with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
 
 
@@ -48,7 +60,7 @@ def standardize_dialog(lines):
         dialogue = re.sub(r'\s+', ' ', dialogue).strip()
 
     if speaker in characters:
-        dialog = f"{speaker}: {dialogue.strip()}"
+        dialog = f"{speaker}\n {dialogue.strip()}"
     else:
         dialog = lines.strip()
 

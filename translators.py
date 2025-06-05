@@ -1,8 +1,8 @@
 
 import requests
-import json
 
-from utils import *
+from utils import get_appdata_file_path, read_json, build_prompt_with_pronouns
+from default_params import DEFAULT_CONFIG
 
 
 # ============================= GLOBAL PARAMS =============================
@@ -10,11 +10,11 @@ config = read_json("config.json")
 
 # Groq API settings
 GROQ_API_KEY = config["groq_api_key"]
-GROQ_URL     = config["groq_api_url"]
+GROQ_URL     = DEFAULT_CONFIG["groq_api_url"]
 
 # Retrieve prompts from config
-system_prompt = config["system_prompt"]
-user_prompt   = config["user_prompt"]
+system_prompt = DEFAULT_CONFIG["system_prompt"]
+user_prompt   = DEFAULT_CONFIG["user_prompt"]
 # =========================================================================
 
 
@@ -35,7 +35,8 @@ def translate_with_llama3(dialogue, speaker):
     }
 
     payload = {
-        "model": "meta-llama/llama-4-scout-17b-16e-instruct",
+        # "model": "meta-llama/llama-4-scout-17b-16e-instruct",
+        "model": "meta-llama/llama-4-maverick-17b-128e-instruct",
         "messages": [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": refined_prompt}

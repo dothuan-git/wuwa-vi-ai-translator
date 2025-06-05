@@ -92,9 +92,6 @@
   "Zhezhi": {
     "gender": "female"
   },
-  "Rover": {
-    "gender": "male"
-  },
   "Cartethyia": {
     "gender": "female"
   },
@@ -142,8 +139,5 @@
   },
   "Cristoforo": {
     "gender": "male"
-  },
-  "52Hz": {
-    "gender": "female"
   }
 }

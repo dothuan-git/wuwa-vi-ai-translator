@@ -1,20 +1,20 @@
 
 import io
-import json
 import base64
 import easyocr
 import requests
 from PIL import Image, ImageOps, ImageEnhance
 
-from utils import check_create_folder, resource_path
+from utils import check_create_folder, get_appdata_file_path, read_json
+from default_params import DEFAULT_CONFIG
 
 
 # ============================= GLOBAL PARAMS =============================
-with open(resource_path("config.json"), "r", encoding="utf-8") as f:
-    config = json.load(f)
+CONFIG_PATH = get_appdata_file_path("config.json")
+config = read_json("config.json")
 
 # Initialize EasyOCR
-reader = easyocr.Reader(config["easyocr_lg"])
+reader = easyocr.Reader(DEFAULT_CONFIG["easyocr_lg"])
 
 # Google OCR API settings
 GOOGLE_OCR_API_KEY = config["google_ocr_api_key"]

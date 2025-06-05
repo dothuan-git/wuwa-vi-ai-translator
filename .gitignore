@@ -6,6 +6,7 @@ ENV/
 
 # Ignore config.json
 config.json
+default_params.py
 
 # Ignore __pycache__ and other Python junk
 __pycache__/
