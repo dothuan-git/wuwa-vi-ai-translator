@@ -24,8 +24,8 @@ def translate_with_llama3(dialogue, speaker):
     
     # Build the refined prompt with pronouns
     refined_prompt = build_prompt_with_pronouns(user_prompt, dialogue, speaker)
-    print("-------------------------")
-    print(f"{refined_prompt}")
+    # print("-------------------------")
+    # print(f"{refined_prompt}")
 
     headers = {
         "Authorization": f"Bearer {GROQ_API_KEY}",
@@ -39,7 +39,7 @@ def translate_with_llama3(dialogue, speaker):
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": refined_prompt}
         ],
-        "temperature": 0.4
+        "temperature": 0.3
     }
 
     try:

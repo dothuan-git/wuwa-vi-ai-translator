@@ -97,6 +97,9 @@ def capture_and_translate():
                 log_text_area.insert(tk.END, f"\n\n{dialog.strip()}")
                 log_text_area.config(state="disabled")
                 log_text_area.see(tk.END)
+        else:
+            speaker = "unknown"
+            dialog = "Không phát hiện văn bản."
 
         translated = translate_with_llama3(dialog, speaker) if dialog.strip() else "Không phát hiện văn bản."
         text_area.delete(1.0, tk.END)

@@ -109,6 +109,6 @@ def build_prompt_with_pronouns(user_prompt, dialogue, speaker_name):
 
     # Final prompt
     if len(custom_prompt.strip()) > 4:
-        return user_prompt + gender_hint + "\n" + custom_prompt + "\n\nEnglish text:\n" + dialogue
+        return user_prompt + gender_hint + "\nPriotize this rule:\n" + custom_prompt + "\n\nEnglish text:\n" + dialogue
     else:
         return user_prompt + gender_hint + "\n\nEnglish text:\n" + dialogue
