@@ -6,7 +6,7 @@ To enable high-accuracy OCR and AI-powered translation in **Wuwa AI Vietnamese T
 - ✅ **Groq API Key** — for GenAI translation
 
 
-## 1. Google Vision API Key (OCR)
+## 1. Google Vision API Key (OCR) - skip if you dont want to use
 
 This key is **optional** but **recommended** to boost text detection accuracy in-game.
 
