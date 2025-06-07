@@ -9,7 +9,7 @@
 2. **Re-translate**: Refine translations (dont consume your Google OCR quota).
 3. **Manual Input Support**: View or manually modify the captured English text before translating.
 4. **OCR Engines**:
-    - EasyOCR (default, offline, 100% free - slower, less accuracy).
+    - EasyOCR (default, offline, 100% free - slower, a bit less accuracy).
     - Google Vision OCR (online, higher accuracy, requires API key - read carefully the note below).
 5. **History Log**: Show/hide log history.
 6. **Export Log**: Export the history log as a `.txt` file. (this file can be used by ChatGPT to summary the story).
