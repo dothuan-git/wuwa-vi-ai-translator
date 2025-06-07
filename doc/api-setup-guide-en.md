@@ -2,11 +2,31 @@
 
 To enable high-accuracy OCR and AI-powered translation in **Wuwa AI Vietnamese Translator**, you’ll need to obtain **two API keys**:
 
-- ✅ **Google Vision API Key** — for OCR (text recognition)
 - ✅ **Groq API Key** — for GenAI translation
+- ✅ **Google Vision API Key** — for OCR (text recognition)
 
 
-## 1. Google Vision API Key (OCR) - skip if you dont want to use
+## 1. Groq API Key (LLaMA 3 Translation)
+
+This key is **required** for using the AI translator.
+
+### 🛠️ Steps to get your Groq API Key:
+
+1. Go to [https://console.groq.com/keys](https://console.groq.com/keys).
+![image](https://github.com/user-attachments/assets/124cf025-2c83-4fbc-932e-77469a505714)
+
+3. Sign in or create a free Groq account.
+![image](https://github.com/user-attachments/assets/c8b4c76a-2298-4270-a7de-6e958338d8fd)
+
+5. Click **Create API Key**. Can name anything you want.
+![image](https://github.com/user-attachments/assets/3b0bba33-9831-4675-a0ff-00e7a5b02a9e)
+
+7. Copy the generated key.
+![image](https://github.com/user-attachments/assets/45d720f5-048f-40c0-955a-bd69957f506f)
+
+
+
+## 2. Google Vision API Key (OCR) - skip if you dont want to use
 
 This key is **optional** but **recommended** to boost text detection accuracy in-game.
 
@@ -53,31 +73,6 @@ This key is **optional** but **recommended** to boost text detection accuracy in
 
 - Launch the app and click the **`Config`** button.
 - Paste your API key into the **GOOGLE VISION API_KEY** field.
-
-
-## 2. Groq API Key (LLaMA 3 Translation)
-
-This key is **required** for using the AI translator.
-
-### 🛠️ Steps to get your Groq API Key:
-
-1. Go to [https://console.groq.com/keys](https://console.groq.com/keys).
-![image](https://github.com/user-attachments/assets/124cf025-2c83-4fbc-932e-77469a505714)
-
-3. Sign in or create a free Groq account.
-![image](https://github.com/user-attachments/assets/c8b4c76a-2298-4270-a7de-6e958338d8fd)
-
-5. Click **Create API Key**. Can name anything you want.
-![image](https://github.com/user-attachments/assets/3b0bba33-9831-4675-a0ff-00e7a5b02a9e)
-
-7. Copy the generated key.
-![image](https://github.com/user-attachments/assets/45d720f5-048f-40c0-955a-bd69957f506f)
-
-
-### 🔽 Paste into the App:
-
-- Open the app and click the **`Config`** button.
-- Paste your key into the **GROQ API KEY** field.
 
 
 ## 💾 Final Step: Save Config
