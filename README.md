@@ -61,4 +61,6 @@
    - Position the blue semi-transparent canvas over the English text in the game.
    - Click **"Translate $"** to capture and translate.
    - Use **"Re-translate"** for refining results.
+  
+Demo video: https://youtu.be/XW4ggE_lIik
 
