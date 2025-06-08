@@ -62,3 +62,5 @@
    - Nhấn **"Translate $"** để chụp và dịch.
    - Sử dụng **"Re-translate"** để dịch lại bản dịch hiện tại.
 
+Demo video: https://youtu.be/XW4ggE_lIik
+
