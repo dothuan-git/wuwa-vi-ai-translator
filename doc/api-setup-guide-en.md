@@ -29,6 +29,8 @@ This key is **required** for using the AI translator.
 ## 2. Google Vision API Key (OCR) - skip if you dont want to use
 
 This key is **optional** but **recommended** to boost text detection accuracy in-game.
+- Video guide: https://youtu.be/zF27tW5bEMY
+
 
 ### 🛠️ Steps to get your Google Vision API Key:
 
@@ -43,7 +45,7 @@ This key is **optional** but **recommended** to boost text detection accuracy in
 ![image](https://github.com/user-attachments/assets/61a4504e-96a7-4653-99da-6fc76f1b784e)
 
 
-5. After creating the project, go to **APIs & Services > Library**.
+5. After creating the project, go to **APIs & Services**.
 ![image](https://github.com/user-attachments/assets/f99bc319-c4d0-475b-a74a-6ef8bebf7ca3)
 
 7. In the search bar, type `Vision API` and click **Enable**.
