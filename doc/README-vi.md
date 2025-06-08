@@ -55,7 +55,7 @@
      - Prompt tùy chỉnh nếu muốn.
      - Tên và giới tính của Rover (để cá nhân hoá đại từ).
 
-   > Tham khảo [hướng dẫn này](https://github.com/dothuan-git/wuwa-vi-ai-translator/blob/main/doc/api-setup-guide-en.md) để biết cách lấy API key.
+   > Tham khảo [hướng dẫn này](https://github.com/dothuan-git/wuwa-vi-ai-translator/blob/main/doc/api-setup-guide-vi.md) để biết cách lấy API key.
 
 3. **Bắt đầu dịch**
    - Di chuyển khung xanh trong suốt sao cho bao phủ văn bản tiếng Anh trong game.
