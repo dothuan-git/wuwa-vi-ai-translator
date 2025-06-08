@@ -70,6 +70,12 @@ This key is **optional** but **recommended** to boost text detection accuracy in
 ![image](https://github.com/user-attachments/assets/ba5fca06-e6ab-4361-83a2-d2863bcd7418)
 ![image](https://github.com/user-attachments/assets/53062a00-50c5-434c-8f0f-d603300dc15e)
 ![image](https://github.com/user-attachments/assets/594ea830-8afe-4b33-9acf-03f2424ad9d0)
+![image](https://github.com/user-attachments/assets/f071ad6a-88ca-46bd-847f-7de3bcb4329d)
+![image](https://github.com/user-attachments/assets/f5dabf0a-0ae7-4b4e-b6d5-113fb6662e28)
+![image](https://github.com/user-attachments/assets/09e3693b-01fd-47be-b03e-d48ea9a69404)
+![image](https://github.com/user-attachments/assets/ff0cc32e-8d15-4477-9747-7cbe04bad51b)
+![image](https://github.com/user-attachments/assets/d6981e10-01c3-4dee-b194-6820f3c4eae1)
+
 
 ### 🔽 Paste into the App:
 
