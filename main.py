@@ -89,19 +89,23 @@ def capture_and_translate():
 
         if text.strip():
             speaker, dialog, text = standardize_dialog(text)
-            full_log.append(dialog)
-
-            # Update log window if it's open
-            if log_window and log_text_area:
-                log_text_area.config(state="normal")
-                log_text_area.insert(tk.END, f"\n\n{dialog.strip()}")
-                log_text_area.config(state="disabled")
-                log_text_area.see(tk.END)
         else:
             speaker = "unknown"
             dialog = "Không phát hiện văn bản."
 
         translated = translate_with_llama3(dialog, speaker) if dialog.strip() else "Không phát hiện văn bản."
+
+        # Log the translated text instead of original
+        full_log.append(translated)
+
+        # Update log window if it's open
+        if log_window and log_text_area:
+            log_text_area.config(state="normal")
+            log_text_area.insert(tk.END, f"{translated.strip()}\n\n")
+            log_text_area.config(state="disabled")
+            log_text_area.see(tk.END)
+
+        # Update GUI text areas
         text_area.delete(1.0, tk.END)
         text_area.insert(tk.END, dialog if dialog.strip() else "No text detected.", "center")
         translated_text_area.delete(1.0, tk.END)
@@ -130,7 +134,7 @@ def toggle_log_window():
     else:
         log_window = tk.Toplevel(root)
         log_window.title("Log History")
-        log_window.geometry("500x400")
+        log_window.geometry("600x400")
 
         log_text_area = tk.Text(log_window, wrap="word", font=default_font)
         log_text_area.pack(fill="both", expand=True, padx=5, pady=5)
