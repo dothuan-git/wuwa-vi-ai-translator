@@ -15,8 +15,8 @@ user_prompt   = DEFAULT_CONFIG["user_prompt"]
 # =========================================================================
 
 
-# Translation with LLaMA 3 via Groq
-def translate_with_llama3(dialogue, speaker):
+# Translation with LLaMA via Groq
+def translate_with_llama(dialogue, speaker):
     GROQ_API_KEY = read_json("config.json")["groq_api_key"]
 
     if not dialogue.strip():

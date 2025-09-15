@@ -52,7 +52,7 @@ def extract_text_from_image(img):
     return raw_text
 
 # Translation with LLaMA 3 via Groq
-def translate_with_llama3(text):
+def translate_with_llama(text):
     if not text.strip():
         return "Không phát hiện văn bản."
 
@@ -84,7 +84,7 @@ def capture_and_translate():
         screenshot = sct.grab(region)
         img = Image.frombytes("RGB", screenshot.size, screenshot.rgb)
         text = extract_text_from_image(img)
-        translated = translate_with_llama3(text) if text.strip() else "Không phát hiện văn bản."
+        translated = translate_with_llama(text) if text.strip() else "Không phát hiện văn bản."
         text_area.delete(1.0, tk.END)
         text_area.insert(tk.END, text if text.strip() else "No text detected.")
         translated_text_area.delete(1.0, tk.END)
@@ -93,7 +93,7 @@ def capture_and_translate():
 # Translate text from original dialog
 def translate_original_text():
     text = text_area.get(1.0, tk.END).strip()
-    translated = translate_with_llama3(text) if text.strip() else "Không phát hiện văn bản."
+    translated = translate_with_llama(text) if text.strip() else "Không phát hiện văn bản."
     translated_text_area.delete(1.0, tk.END)
     translated_text_area.insert(tk.END, translated)
 
