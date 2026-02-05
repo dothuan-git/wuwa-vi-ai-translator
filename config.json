@@ -1,6 +1,5 @@
 {
     "google_ocr_api_key": "YOUR_GOOGLE_OCR_API_KEY",
     "groq_api_key": "YOUR_GROQ_API_KEY",
-    "vi_pronoun": false,
     "custom_prompt": ""
 }

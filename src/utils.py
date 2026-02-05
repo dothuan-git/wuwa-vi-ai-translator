@@ -57,58 +57,12 @@ def standardize_dialog(lines):
     return speaker, dialog, lines
 
 
-# Get character gender
-def get_gender(characters, name):
-    return characters.get(name, {}).get("gender", "unknown")
-
-
-# Build prompt with pronouns based on speaker and listener
-def build_prompt_with_pronouns(user_prompt, dialogue, speaker_name):
-    characters    = read_json("characters.json")
-    config        = read_json("config.json")
+# Build prompt with optional custom instructions
+def build_prompt(user_prompt, dialogue):
+    config = read_json("config.json")
     custom_prompt = config["custom_prompt"]
-    vi_pronoun    = config["vi_pronoun"]
 
-
-    if vi_pronoun:
-        # Setup names
-        listener_name = "Rover"
-        listener_gender = get_gender(characters, listener_name)
-        speaker_gender = get_gender(characters, speaker_name)
-
-        # Define pronouns
-        pronouns = {
-            "male": {"I": "anh", "you_to_male": "cậu", "you_to_female": "em", "you_to_unknown": "bạn"},
-            "female": {"I": "em", "you_to_male": "anh", "you_to_female": "em", "you_to_unknown": "bạn"},
-            "unknown": {"I": "tôi", "you": "bạn"}
-        }
-
-        # Add pronoun instruction only if speaker gender is known
-        if speaker_name == "Rover":
-            gender_hint = ""
-        elif speaker_gender == "unknown":
-            gender_hint = (
-                f"\nCharacter context:\n"
-                f"- Speaker: {speaker_name} (gender: unknown)\n"
-                f"- Listener: {listener_name} (gender: {listener_gender})\n"
-                f"- Infer speaker gender from their name, then apply appropriate Vietnamese pronouns based on gender of speaker and listener."
-            )
-        else:
-            i_pronoun = pronouns[speaker_gender]["I"]
-            you_pronoun = pronouns[speaker_gender][f"you_to_{listener_gender}"]
-
-            gender_hint = (
-                f"\nCharacter context:\n"
-                f"- Speaker: {speaker_name} (gender: {speaker_gender})\n"
-                f"- Listener: {listener_name} (gender: {listener_gender})\n"
-                f"- Translate first-person \"I\" as \"{i_pronoun}\" and second-person \"you\" as \"{you_pronoun}\" in Vietnamese."
-            )
-    else:
-        gender_hint = ""
-
-
-    # Final prompt
     if len(custom_prompt.strip()) > 4:
-        return user_prompt + gender_hint + "\nPriotize this rule:\n" + custom_prompt + "\n\nEnglish text:\n" + dialogue
+        return user_prompt + "\nPriotize this rule:\n" + custom_prompt + "\n\nEnglish text:\n" + dialogue
     else:
-        return user_prompt + gender_hint + "\n\nOriginal English text:\n" + dialogue
+        return user_prompt + "\n\nOriginal English text:\n" + dialogue

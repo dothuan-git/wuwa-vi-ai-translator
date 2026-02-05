@@ -1,7 +1,7 @@
 
 import requests
 
-from utils import read_json, build_prompt_with_pronouns
+from utils import read_json, build_prompt
 from default_params import DEFAULT_CONFIG
 
 
@@ -16,14 +16,13 @@ user_prompt   = DEFAULT_CONFIG["user_prompt"]
 
 
 # Translation with LLaMA via Groq
-def translate_with_llama(dialogue, speaker):
+def translate_with_llama(dialogue):
     GROQ_API_KEY = read_json("config.json")["groq_api_key"]
 
     if not dialogue.strip():
         return "Không phát hiện văn bản."
-    
-    # Build the refined prompt with pronouns
-    refined_prompt = build_prompt_with_pronouns(user_prompt, dialogue, speaker)
+
+    refined_prompt = build_prompt(user_prompt, dialogue)
     # print("-------------------------")
     # print(f"{refined_prompt}")
 

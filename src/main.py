@@ -373,13 +373,12 @@ class TranslatorApp:
                 
                 # Process extracted text
                 if text.strip():
-                    speaker, dialog, text = standardize_dialog(text)
+                    _, dialog, text = standardize_dialog(text)
                 else:
-                    speaker = AppConstants.UNKNOWN_SPEAKER
                     dialog = AppConstants.NO_TEXT_DETECTED
                 
                 # Translate the dialog
-                translated = (translate_with_llama(dialog, speaker) 
+                translated = (translate_with_llama(dialog)
                             if dialog.strip() else AppConstants.NO_TEXT_DETECTED)
                 
                 # Update log and UI
@@ -400,8 +399,7 @@ class TranslatorApp:
             if not dialog:
                 return
             
-            speaker = dialog.split("\n")[0] if "\n" in dialog else AppConstants.UNKNOWN_SPEAKER
-            translated = translate_with_llama(dialog, speaker)
+            translated = translate_with_llama(dialog)
             
             self.translated_text_area.delete(1.0, tk.END)
             self.translated_text_area.insert(tk.END, translated, "center")
