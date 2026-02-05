@@ -1,6 +1,14 @@
+GROQ_MODELS = [
+    "moonshotai/kimi-k2-instruct-0905",
+    "qwen/qwen3-32b",
+    "meta-llama/llama-4-maverick-17b-128e-instruct",
+    "openai/gpt-oss-120b",
+]
+
 DEFAULT_CONFIG = {
     "openai_api_key": "OPENAI_API_KEY",
     "groq_api_url": "https://api.groq.com/openai/v1/chat/completions",
+    "groq_model": "moonshotai/kimi-k2-instruct-0905",
     "easyocr_lg": [
         "en"
     ],

@@ -428,6 +428,8 @@ class TranslatorApp:
                     recent_history = self.translation_history[-5:]
                     translated = translate_with_llama(dialog, speaker, recent_history)
                     self.translation_history.append((dialog, translated))
+                    # Keep only recent history to avoid memory bloat
+                    self.translation_history = self.translation_history[-10:]
                 else:
                     translated = AppConstants.NO_TEXT_DETECTED
 

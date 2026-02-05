@@ -4,6 +4,7 @@ import json
 import os
 
 from utils import get_appdata_file_path
+from default_params import GROQ_MODELS, DEFAULT_CONFIG
 
 
 CONFIG_PATH = get_appdata_file_path("config.json")
@@ -71,6 +72,7 @@ def open_settings_window(master):
     # --- Variables ---
     google_ocr_var = tk.StringVar()
     groq_api_var = tk.StringVar()
+    groq_model_var = tk.StringVar()
 
     # --- Load existing values ---
     config = {}
@@ -80,6 +82,7 @@ def open_settings_window(master):
             config = json.load(f)
         google_ocr_var.set(config.get("google_ocr_api_key", ""))
         groq_api_var.set(config.get("groq_api_key", ""))
+        groq_model_var.set(config.get("groq_model", DEFAULT_CONFIG["groq_model"]))
         custom_prompt = config.get("custom_prompt", "")
 
     # --- Main Frame Layout ---
@@ -97,12 +100,17 @@ def open_settings_window(master):
     groq_api_entry = tk.Entry(frm, textvariable=groq_api_var, bg="#e8f0fe", fg="#222B38", show="*")
     groq_api_entry.grid(row=3, column=0, sticky='ew', pady=(0,8))
 
-    tk.Label(frm, text="Custom Prompt:").grid(row=4, column=0, sticky='w', pady=(8,0))
+    # --- Model Selection ---
+    tk.Label(frm, text="Model:", bg=LABEL_BG, fg=LABEL_FG).grid(row=4, column=0, sticky='w')
+    model_combo = ttk.Combobox(frm, textvariable=groq_model_var, values=GROQ_MODELS, state="readonly")
+    model_combo.grid(row=5, column=0, sticky='ew', pady=(0,8))
+
+    tk.Label(frm, text="Custom Prompt:").grid(row=6, column=0, sticky='w', pady=(8,0))
     
     # --- Scalable custom_prompt box ---
     custom_prompt_txt = tk.Text(frm, height=6, wrap="word")
-    custom_prompt_txt.grid(row=5, column=0, sticky='nsew', pady=(0,8))
-    frm.rowconfigure(5, weight=1)
+    custom_prompt_txt.grid(row=7, column=0, sticky='nsew', pady=(0,8))
+    frm.rowconfigure(7, weight=1)
     custom_prompt_txt.insert('1.0', custom_prompt)
 
     def save_settings():
@@ -113,6 +121,7 @@ def open_settings_window(master):
         # --- Save to config.json ---
         config["google_ocr_api_key"] = google_key
         config["groq_api_key"] = groq_key
+        config["groq_model"] = groq_model_var.get()
         config["custom_prompt"] = custom_prompt_val
         with open(CONFIG_PATH, "w", encoding="utf-8") as f:
             json.dump(config, f, indent=4, ensure_ascii=False)
