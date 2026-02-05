@@ -29,15 +29,21 @@ def open_settings_window(master):
     # --- Create Toplevel window ---
     window = tk.Toplevel(master)
     window.title("Settings")
-    window.geometry("400x450")
-    window.minsize(350, 300)
     window.attributes('-topmost', True)
     window.configure(bg=WINDOW_BG)
 
+    # Scale settings window to screen size
+    screen_w = master.winfo_screenwidth()
+    screen_h = master.winfo_screenheight()
+    settings_w = max(350, int(screen_w * 0.22))
+    settings_h = max(300, int(screen_h * 0.4))
+    window.geometry(f"{settings_w}x{settings_h}")
+    window.minsize(350, 300)
+
     # Place at right side, vertically centered, overlay main window
     master.update_idletasks()
-    x = master.winfo_rootx() + master.winfo_width() - 400
-    y = master.winfo_rooty() + (master.winfo_height() - 450) // 2
+    x = master.winfo_rootx() + master.winfo_width() - settings_w
+    y = master.winfo_rooty() + (master.winfo_height() - settings_h) // 2
     window.geometry(f"+{x}+{y}")
 
     # --- Styles for ttk Button ---

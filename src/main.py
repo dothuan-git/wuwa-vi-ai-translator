@@ -30,12 +30,17 @@ logger = logging.getLogger(__name__)
 class AppConstants:
     """Application constants and configuration."""
     
-    # Window dimensions and properties
-    MAIN_WINDOW_SIZE = "950x250"
-    LOG_WINDOW_SIZE = "600x400"
-    
-    # Default region settings
-    DEFAULT_REGION = {"top": 100, "left": 100, "width": 800, "height": 150}
+    # Log window size ratio (relative to screen)
+    LOG_WIDTH_RATIO = 0.35
+    LOG_HEIGHT_RATIO = 0.4
+
+    # Main window ratio (relative to screen)
+    MAIN_WIDTH_RATIO = 0.5
+    MAIN_HEIGHT_RATIO = 0.2
+
+    # Region selector ratio (relative to screen)
+    REGION_WIDTH_RATIO = 0.42
+    REGION_HEIGHT_RATIO = 0.12
     MIN_REGION_SIZE = 50
     CORNER_THRESHOLD = 10
     
@@ -197,7 +202,7 @@ class TranslatorApp:
     """Main application class for the AI Translator."""
     
     def __init__(self):
-        self.region = AppConstants.DEFAULT_REGION.copy()
+        self.region: Dict[str, int] = {}
         self.full_log: List[str] = []
         self.translation_history: List[Tuple[str, str]] = []
         self.log_window: Optional[tk.Toplevel] = None
@@ -215,12 +220,29 @@ class TranslatorApp:
         """Initialize the main application window."""
         self.root = tk.Tk()
         self.root.title("Gió Hú AI Translator")
-        self.root.geometry(AppConstants.MAIN_WINDOW_SIZE)
         self.root.attributes("-topmost", True)
+
+        # Scale window and region to screen size
+        screen_w = self.root.winfo_screenwidth()
+        screen_h = self.root.winfo_screenheight()
+
+        win_w = int(screen_w * AppConstants.MAIN_WIDTH_RATIO)
+        win_h = int(screen_h * AppConstants.MAIN_HEIGHT_RATIO)
+        win_x = (screen_w - win_w) // 2
+        win_y = screen_h - win_h - 60
+        self.root.geometry(f"{win_w}x{win_h}+{win_x}+{win_y}")
+
+        self.region = {
+            "top": int(screen_h * 0.45),
+            "left": (screen_w - int(screen_w * AppConstants.REGION_WIDTH_RATIO)) // 2,
+            "width": int(screen_w * AppConstants.REGION_WIDTH_RATIO),
+            "height": int(screen_h * AppConstants.REGION_HEIGHT_RATIO),
+        }
+
         self.root.grid_rowconfigure(0, weight=1)
         self.root.grid_columnconfigure(0, weight=1)
         self.root.grid_columnconfigure(1, weight=0)
-        
+
         # Set up default font
         self.default_font = tkFont.Font(
             family=AppConstants.DEFAULT_FONT_FAMILY,
@@ -452,7 +474,11 @@ class TranslatorApp:
         """Open the log history window."""
         self.log_window = tk.Toplevel(self.root)
         self.log_window.title("Log History")
-        self.log_window.geometry(AppConstants.LOG_WINDOW_SIZE)
+        screen_w = self.root.winfo_screenwidth()
+        screen_h = self.root.winfo_screenheight()
+        log_w = int(screen_w * AppConstants.LOG_WIDTH_RATIO)
+        log_h = int(screen_h * AppConstants.LOG_HEIGHT_RATIO)
+        self.log_window.geometry(f"{log_w}x{log_h}")
         
         self.log_text_area = tk.Text(
             self.log_window,
