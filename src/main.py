@@ -314,6 +314,12 @@ class TranslatorApp:
             command=self.export_log_to_file,
             style="Translate.TButton"
         ).grid(row=5, column=0, sticky="ew", padx=2, pady=2)
+
+        # Font size buttons
+        font_frame = tk.Frame(self.button_frame)
+        font_frame.grid(row=6, column=0, sticky="ew", padx=2, pady=2)
+        tk.Button(font_frame, text="A-", width=3, command=self.decrease_font_size).pack(side="left", expand=True)
+        tk.Button(font_frame, text="A+", width=3, command=self.increase_font_size).pack(side="right", expand=True)
     
     def _create_text_areas(self) -> None:
         """Create text areas for original and translated text."""
@@ -357,7 +363,14 @@ class TranslatorApp:
             command=lambda: open_settings_window(self.root)
         )
         self.settings_btn.place(relx=1.0, rely=1.0, x=-10, y=-10, anchor="se")
-    
+
+    def increase_font_size(self) -> None:
+        self.default_font.configure(size=self.default_font.cget("size") + 2)
+
+    def decrease_font_size(self) -> None:
+        new_size = max(8, self.default_font.cget("size") - 2)
+        self.default_font.configure(size=new_size)
+
     def capture_and_translate(self) -> None:
         """Capture screen region and translate the extracted text."""
         try:

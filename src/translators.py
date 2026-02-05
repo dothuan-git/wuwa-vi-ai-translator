@@ -33,7 +33,7 @@ def translate_with_llama(dialogue):
 
     payload = {
         # "model": "meta-llama/llama-4-scout-17b-16e-instruct",
-        "model": "openai/gpt-oss-20b",
+        "model": "openai/gpt-oss-120b",
         "messages": [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": refined_prompt}
