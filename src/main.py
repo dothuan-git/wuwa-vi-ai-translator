@@ -8,6 +8,7 @@ Author: Wuthering Waves AI Translator Team
 Version: 2.0.0
 """
 
+import ctypes
 import mss
 from PIL import Image
 import tkinter as tk
@@ -16,6 +17,12 @@ from tkinter import filedialog, messagebox
 from tkinter import ttk
 from typing import Dict, List, Optional, Tuple, Any
 import logging
+
+# Fix DPI scaling on Windows so geometry matches actual screen pixels
+try:
+    ctypes.windll.shcore.SetProcessDpiAwareness(2)
+except Exception:
+    pass
 
 from settings_window import open_settings_window
 from ocr import extract_text_with_google_ocr, extract_text_from_image
@@ -213,7 +220,10 @@ class TranslatorApp:
         self._setup_styles()
         self._create_region_selector()
         self._create_ui_components()
-        
+
+        # Force geometry to apply now, not lazily on first event
+        self.root.update_idletasks()
+
         logger.info("Translator application initialized successfully")
     
     def _setup_main_window(self) -> None:
@@ -242,6 +252,7 @@ class TranslatorApp:
         self.root.grid_rowconfigure(0, weight=1)
         self.root.grid_columnconfigure(0, weight=1)
         self.root.grid_columnconfigure(1, weight=0)
+        self.root.grid_propagate(False)
 
         # Set up default font
         self.default_font = tkFont.Font(
@@ -353,7 +364,6 @@ class TranslatorApp:
         
         self.text_area = tk.Text(
             self.original_frame,
-            width=40, height=3,
             wrap="word",
             font=self.default_font,
             padx=10, pady=10,
@@ -365,7 +375,6 @@ class TranslatorApp:
         # Translated text area
         self.translated_text_area = tk.Text(
             self.root,
-            width=40, height=5,
             wrap="word",
             font=self.default_font,
             padx=30, pady=10,

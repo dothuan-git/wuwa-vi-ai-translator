@@ -1,4 +1,5 @@
 
+import re
 import requests
 
 from utils import read_json, build_prompt
@@ -38,7 +39,7 @@ def translate_with_llama(dialogue, speaker="unknown", history=None):
     }
 
     payload = {
-        "model": "qwen/qwen-3-32b",
+        "model": "qwen/qwen3-32b",
         "messages": messages,
         "temperature": 0.3
     }
@@ -47,6 +48,8 @@ def translate_with_llama(dialogue, speaker="unknown", history=None):
         response = requests.post(GROQ_URL, headers=headers, json=payload)
         response.raise_for_status()
         text_response = response.json()["choices"][0]["message"]["content"].strip()
+        # Strip Qwen3 chain-of-thought <think>...</think> tags
+        text_response = re.sub(r'<think>.*?</think>', '', text_response, flags=re.DOTALL).strip()
         return text_response
     except Exception as e:
         return f"[LLaMA Error] {str(e)}"
