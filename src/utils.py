@@ -57,12 +57,15 @@ def standardize_dialog(lines):
     return speaker, dialog, lines
 
 
-# Build prompt with optional custom instructions
-def build_prompt(user_prompt, dialogue):
+# Build prompt with speaker and optional custom instructions
+def build_prompt(user_prompt, dialogue, speaker="unknown"):
     config = read_json("config.json")
     custom_prompt = config["custom_prompt"]
 
+    prompt = user_prompt
+    if speaker and speaker != "unknown":
+        prompt += f"\n[Speaker: {speaker}]"
     if len(custom_prompt.strip()) > 4:
-        return user_prompt + "\nPriotize this rule:\n" + custom_prompt + "\n\nEnglish text:\n" + dialogue
-    else:
-        return user_prompt + "\n\nOriginal English text:\n" + dialogue
+        prompt += "\nPriotize this rule:\n" + custom_prompt
+    prompt += "\n\nEnglish text:\n" + dialogue
+    return prompt

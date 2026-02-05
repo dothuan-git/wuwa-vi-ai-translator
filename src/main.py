@@ -199,6 +199,7 @@ class TranslatorApp:
     def __init__(self):
         self.region = AppConstants.DEFAULT_REGION.copy()
         self.full_log: List[str] = []
+        self.translation_history: List[Tuple[str, str]] = []
         self.log_window: Optional[tk.Toplevel] = None
         self.log_text_area: Optional[tk.Text] = None
         self.original_text_visible = False
@@ -386,14 +387,19 @@ class TranslatorApp:
                 
                 # Process extracted text
                 if text.strip():
-                    _, dialog, text = standardize_dialog(text)
+                    speaker, dialog, text = standardize_dialog(text)
                 else:
+                    speaker = AppConstants.UNKNOWN_SPEAKER
                     dialog = AppConstants.NO_TEXT_DETECTED
-                
-                # Translate the dialog
-                translated = (translate_with_llama(dialog)
-                            if dialog.strip() else AppConstants.NO_TEXT_DETECTED)
-                
+
+                # Translate with conversation history for context
+                if dialog.strip():
+                    recent_history = self.translation_history[-5:]
+                    translated = translate_with_llama(dialog, speaker, recent_history)
+                    self.translation_history.append((dialog, translated))
+                else:
+                    translated = AppConstants.NO_TEXT_DETECTED
+
                 # Update log and UI
                 self._update_log(translated)
                 self._update_text_areas(dialog, translated)

@@ -16,15 +16,21 @@ user_prompt   = DEFAULT_CONFIG["user_prompt"]
 
 
 # Translation with LLaMA via Groq
-def translate_with_llama(dialogue):
+def translate_with_llama(dialogue, speaker="unknown", history=None):
     GROQ_API_KEY = read_json("config.json")["groq_api_key"]
 
     if not dialogue.strip():
         return "Không phát hiện văn bản."
 
-    refined_prompt = build_prompt(user_prompt, dialogue)
-    # print("-------------------------")
-    # print(f"{refined_prompt}")
+    refined_prompt = build_prompt(user_prompt, dialogue, speaker)
+
+    # Build multi-turn messages with conversation history
+    messages = [{"role": "system", "content": system_prompt}]
+    if history:
+        for orig, trans in history:
+            messages.append({"role": "user", "content": orig})
+            messages.append({"role": "assistant", "content": trans})
+    messages.append({"role": "user", "content": refined_prompt})
 
     headers = {
         "Authorization": f"Bearer {GROQ_API_KEY}",
@@ -32,12 +38,8 @@ def translate_with_llama(dialogue):
     }
 
     payload = {
-        # "model": "meta-llama/llama-4-scout-17b-16e-instruct",
-        "model": "openai/gpt-oss-120b",
-        "messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": refined_prompt}
-        ],
+        "model": "qwen/qwen-3-32b",
+        "messages": messages,
         "temperature": 0.3
     }
 
