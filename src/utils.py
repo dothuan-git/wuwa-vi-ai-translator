@@ -4,39 +4,52 @@ import os
 import sys
 
 
-# Create folder if it doesn't exist
 def check_create_folder(folder_path):
     if not os.path.exists(folder_path):
         os.makedirs(folder_path)
 
 
-# Get the appdata path to the json file
 def get_appdata_file_path(file_path):
-    # Use %APPDATA% for config storage
     APPDATA_DIR = os.getenv("APPDATA") or os.path.expanduser("~")
-    APP_FOLDER = os.path.join(APPDATA_DIR, "GioHuAI")  # Use a subfolder for your app
-    os.makedirs(APP_FOLDER, exist_ok=True)  # Ensure folder exists
-
+    APP_FOLDER = os.path.join(APPDATA_DIR, "GioHuAI")
+    os.makedirs(APP_FOLDER, exist_ok=True)
     return os.path.join(APP_FOLDER, file_path)
 
 
-# Read json file
 def read_json(file_path):
     path = get_appdata_file_path(file_path)
+    if not os.path.exists(path):
+        return {}
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
 
 
-# Standardize dialog format
+def write_json(file_path, data):
+    path = get_appdata_file_path(file_path)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=4, ensure_ascii=False)
+
+
+def ensure_config():
+    """Write default config.json and characters.json on first run."""
+    from default_params import DEFAULT_CONFIG
+
+    config_path = get_appdata_file_path("config.json")
+    if not os.path.exists(config_path):
+        write_json("config.json", DEFAULT_CONFIG)
+
+    chars_path = get_appdata_file_path("characters.json")
+    if not os.path.exists(chars_path):
+        write_json("characters.json", {})
+
+
 def standardize_dialog(lines):
     characters = read_json("characters.json")
     cleaned = lines.strip().split('\n')
-    print(cleaned)
 
     if not cleaned:
-        return ""
+        return "", "", ""
 
-    # If original list had 'F', we use Rover
     if 'F' in cleaned:
         speaker = "Rover"
         remove_F = [line for line in cleaned if line.strip() != 'F']
@@ -57,10 +70,9 @@ def standardize_dialog(lines):
     return speaker, dialog, lines
 
 
-# Build prompt with speaker and optional custom instructions
 def build_prompt(user_prompt, dialogue, speaker="unknown"):
     config = read_json("config.json")
-    custom_prompt = config["custom_prompt"]
+    custom_prompt = config.get("custom_prompt", "")
 
     prompt = user_prompt
     if speaker and speaker != "unknown":

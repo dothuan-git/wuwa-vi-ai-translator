@@ -1,0 +1,5 @@
+# Optional: heavy EasyOCR engine (~2GB with torch/CUDA)
+easyocr==1.7.2
+torch==2.7.0
+torchvision==0.22.0
+opencv-python-headless==4.11.0.86
