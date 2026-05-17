@@ -59,6 +59,7 @@ def open_settings_window(master, on_hotkey_change=None, on_font_change=None):
     google_ocr_var = tk.StringVar(value=config.get("google_ocr_api_key", ""))
     provider_var = tk.StringVar(value=config.get("provider", DEFAULT_CONFIG["provider"]))
     groq_api_var = tk.StringVar(value=config.get("groq_api_key", ""))
+    gemini_api_var = tk.StringVar(value=config.get("gemini_api_key", ""))
     _init_provider = provider_var.get()
     model_var = tk.StringVar(
         value=config.get(f"{_init_provider}_model", DEFAULT_CONFIG["groq_model"])
@@ -113,6 +114,19 @@ def open_settings_window(master, on_hotkey_change=None, on_font_change=None):
     groq_show_btn = groq_row_frame.winfo_children()[-1]
     row += 1
 
+    # Gemini API key
+    tk.Label(frm, text="Gemini API Key:", bg=LABEL_BG, fg=LABEL_FG).grid(row=row, column=0, sticky='w')
+    row += 1
+    gemini_row_frame = tk.Frame(frm, bg=WINDOW_BG)
+    gemini_row_frame.grid(row=row, column=0, sticky='ew', pady=(0, 8))
+    gemini_row_frame.columnconfigure(0, weight=1)
+    gemini_api_entry = tk.Entry(gemini_row_frame, textvariable=gemini_api_var, bg="#e8f0fe", fg="#222B38", show="*")
+    gemini_api_entry.grid(row=0, column=0, sticky='ew')
+    tk.Button(gemini_row_frame, text="👁", width=3,
+              command=lambda: _toggle_show(gemini_api_entry, gemini_show_btn)).grid(row=0, column=1, padx=(4, 0))
+    gemini_show_btn = gemini_row_frame.winfo_children()[-1]
+    row += 1
+
     # Model
     tk.Label(frm, text="Model:", bg=LABEL_BG, fg=LABEL_FG).grid(row=row, column=0, sticky='w')
     row += 1
@@ -150,6 +164,7 @@ def open_settings_window(master, on_hotkey_change=None, on_font_change=None):
         config["google_ocr_api_key"] = google_ocr_var.get().strip()
         config["provider"] = provider
         config["groq_api_key"] = groq_api_var.get().strip()
+        config["gemini_api_key"] = gemini_api_var.get().strip()
         config[f"{provider}_model"] = model_var.get()
         config["ocr_engine"] = ocr_engine_var.get()
         config["hotkey"] = new_hotkey

@@ -65,9 +65,9 @@ def translate_with_llama(dialogue, speaker="unknown", history=None, on_chunk=Non
 
     config = read_json("config.json")
     provider = config.get("provider", DEFAULT_CONFIG["provider"])
-    url = config.get(f"{provider}_api_url", DEFAULT_CONFIG["groq_api_url"])
+    url = config.get(f"{provider}_api_url", DEFAULT_CONFIG[f"{provider}_api_url"])
     api_key = config.get(f"{provider}_api_key", "")
-    model = config.get(f"{provider}_model", DEFAULT_CONFIG["groq_model"])
+    model = config.get(f"{provider}_model", DEFAULT_CONFIG[f"{provider}_model"])
 
     messages = _build_messages(dialogue, speaker, history)
 
@@ -81,8 +81,10 @@ def translate_with_llama(dialogue, speaker="unknown", history=None, on_chunk=Non
         "temperature": 0.3,
         "stream": bool(on_chunk),
     }
-    if "qwen" in model.lower():
-        # Disable Qwen3 thinking pass — cuts latency for live dialogue.
+    _m = model.lower()
+    if "qwen" in _m or _m.startswith("gemini-2.5"):
+        # Disable the model's thinking pass — cuts latency/cost for live dialogue.
+        # (Qwen3, and Gemini 2.5 Flash/Flash-Lite via the OpenAI-compat layer.)
         payload["reasoning_effort"] = "none"
 
     try:

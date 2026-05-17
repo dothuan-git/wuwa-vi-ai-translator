@@ -1,4 +1,4 @@
-PROVIDERS = ["groq"]
+PROVIDERS = ["groq", "gemini"]
 
 GROQ_MODELS = [
     "qwen/qwen3-32b",
@@ -9,8 +9,14 @@ GROQ_MODELS = [
     "llama-3.1-8b-instant",
 ]
 
+GEMINI_MODELS = [
+    "gemini-2.5-flash",
+    "gemini-2.5-flash-lite",
+]
+
 MODELS_BY_PROVIDER = {
     "groq": GROQ_MODELS,
+    "gemini": GEMINI_MODELS,
 }
 
 OCR_ENGINES = ["windows", "easyocr", "google"]
@@ -21,6 +27,9 @@ DEFAULT_CONFIG = {
     "groq_api_url": "https://api.groq.com/openai/v1/chat/completions",
     "groq_model": "qwen/qwen3-32b",
     "groq_api_key": "",
+    "gemini_api_url": "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
+    "gemini_model": "gemini-2.5-flash-lite",
+    "gemini_api_key": "",
     "ocr_engine": "windows",
     "font_size": 16,
     "hotkey": "ctrl+shift+space",
