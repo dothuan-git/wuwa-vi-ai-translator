@@ -46,21 +46,11 @@ def _toggle_show(entry, btn):
         btn.config(text="🙈")
 
 
-def open_settings_window(master, on_hotkey_change=None):
+def open_settings_window(master, on_hotkey_change=None, on_font_change=None):
     window = tk.Toplevel(master)
     window.title("Settings")
     window.attributes('-topmost', True)
     window.configure(bg=WINDOW_BG)
-
-    screen_w = master.winfo_screenwidth()
-    screen_h = master.winfo_screenheight()
-    settings_w = max(380, int(screen_w * 0.22))
-    settings_h = max(400, int(screen_h * 0.48))
-    master.update_idletasks()
-    x = master.winfo_rootx() + master.winfo_width() - settings_w
-    y = master.winfo_rooty() + (master.winfo_height() - settings_h) // 2
-    window.geometry(f"{settings_w}x{settings_h}+{x}+{y}")
-    window.minsize(380, 400)
 
     _make_style(window)
 
@@ -75,7 +65,7 @@ def open_settings_window(master, on_hotkey_change=None):
     )
     ocr_engine_var = tk.StringVar(value=config.get("ocr_engine", DEFAULT_CONFIG["ocr_engine"]))
     hotkey_var = tk.StringVar(value=config.get("hotkey", DEFAULT_CONFIG["hotkey"]))
-    custom_prompt = config.get("custom_prompt", "")
+    font_size_var = tk.IntVar(value=config.get("font_size", DEFAULT_CONFIG["font_size"]))
 
     frm = tk.Frame(window, bg=WINDOW_BG)
     frm.pack(fill='both', expand=True, padx=10, pady=10)
@@ -147,13 +137,11 @@ def open_settings_window(master, on_hotkey_change=None):
     hotkey_entry.grid(row=row, column=0, sticky='ew', pady=(0, 8))
     row += 1
 
-    # Custom prompt
-    tk.Label(frm, text="Custom Prompt:", bg=LABEL_BG, fg=LABEL_FG).grid(row=row, column=0, sticky='w', pady=(8, 0))
+    # Font size
+    tk.Label(frm, text="Font Size:", bg=LABEL_BG, fg=LABEL_FG).grid(row=row, column=0, sticky='w')
     row += 1
-    custom_prompt_txt = tk.Text(frm, height=5, wrap="word")
-    custom_prompt_txt.grid(row=row, column=0, sticky='nsew', pady=(0, 8))
-    frm.rowconfigure(row, weight=1)
-    custom_prompt_txt.insert('1.0', custom_prompt)
+    ttk.Spinbox(frm, from_=8, to=40, increment=2, textvariable=font_size_var,
+                state="readonly").grid(row=row, column=0, sticky='w', pady=(0, 8))
     row += 1
 
     def save_settings():
@@ -165,11 +153,14 @@ def open_settings_window(master, on_hotkey_change=None):
         config[f"{provider}_model"] = model_var.get()
         config["ocr_engine"] = ocr_engine_var.get()
         config["hotkey"] = new_hotkey
-        config["custom_prompt"] = custom_prompt_txt.get("1.0", "end-1c").strip()
+        config["font_size"] = font_size_var.get()
+        config["settings_geometry"] = window.winfo_geometry()
         write_json("config.json", config)
 
         if on_hotkey_change:
             on_hotkey_change(new_hotkey)
+        if on_font_change:
+            on_font_change(font_size_var.get())
 
         messagebox.showinfo("Success", "Settings saved!")
         window.destroy()
@@ -180,3 +171,29 @@ def open_settings_window(master, on_hotkey_change=None):
 
     window.rowconfigure(0, weight=1)
     window.columnconfigure(0, weight=1)
+
+    # Size the modal to fit its components (or restore the remembered size)
+    window.update_idletasks()
+    req_w = max(360, window.winfo_reqwidth())
+    req_h = window.winfo_reqheight()
+    window.minsize(req_w, req_h)
+
+    saved_geo = config.get("settings_geometry")
+    if saved_geo:
+        window.geometry(saved_geo)
+    else:
+        master.update_idletasks()
+        x = master.winfo_rootx() + master.winfo_width() - req_w
+        y = master.winfo_rooty() + (master.winfo_height() - req_h) // 2
+        window.geometry(f"{req_w}x{req_h}+{x}+{y}")
+
+    def _on_window_close():
+        try:
+            c = read_json("config.json")
+            c["settings_geometry"] = window.winfo_geometry()
+            write_json("config.json", c)
+        except Exception:
+            pass
+        window.destroy()
+
+    window.protocol("WM_DELETE_WINDOW", _on_window_close)

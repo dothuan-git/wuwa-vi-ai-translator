@@ -10,7 +10,7 @@ from collections import OrderedDict
 from PIL import Image
 import tkinter as tk
 import tkinter.font as tkFont
-from tkinter import filedialog, messagebox
+from tkinter import messagebox
 from tkinter import ttk
 from typing import Dict, List, Optional, Tuple
 import logging
@@ -23,7 +23,7 @@ except Exception:
 from settings_window import open_settings_window
 from ocr import extract_text
 from translators import translate_with_llama
-from utils import standardize_dialog, ensure_config, read_json
+from utils import standardize_dialog, ensure_config, read_json, write_json
 from default_params import DEFAULT_CONFIG
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -36,8 +36,6 @@ WS_EX_TRANSPARENT = 0x00000020
 
 
 class AppConstants:
-    LOG_WIDTH_RATIO = 0.35
-    LOG_HEIGHT_RATIO = 0.4
     MAIN_WIDTH_RATIO = 0.5
     MAIN_HEIGHT_RATIO = 0.2
     REGION_WIDTH_RATIO = 0.42
@@ -93,12 +91,12 @@ class RegionSelector:
         self.resize_corner: Optional[str] = None
         self.start_x = 0
         self.start_y = 0
-        self._edit_mode = False
+        self._edit_mode = True
         self._hwnd: Optional[int] = None
 
         self._create_selector_window()
         self._bind_events()
-        # Start in click-through mode after window is mapped
+        # Resolve the window handle once mapped; start editable (unlocked)
         self.parent.after(200, self._apply_click_through)
 
     def _create_selector_window(self) -> None:
@@ -107,7 +105,7 @@ class RegionSelector:
             f"{self.region['width']}x{self.region['height']}+"
             f"{self.region['left']}+{self.region['top']}"
         )
-        self.selector.attributes("-alpha", 0.3)
+        self.selector.attributes("-alpha", 0.35)
         self.selector.attributes("-topmost", True)
         self.selector.overrideredirect(True)
 
@@ -126,16 +124,17 @@ class RegionSelector:
         self.canvas.bind("<Motion>", self._update_cursor)
 
     def _apply_click_through(self) -> None:
-        """Switch to border-only click-through mode."""
+        """Resolve the window handle; enable click-through only when locked."""
         try:
             self.selector.update_idletasks()
             hwnd = ctypes.windll.user32.GetParent(self.selector.winfo_id())
             if hwnd == 0:
                 hwnd = self.selector.winfo_id()
             self._hwnd = hwnd
-            # Make fill transparent so only the border shows
-            self.selector.attributes("-transparentcolor", AppConstants.SELECTOR_BG_COLOR)
-            _set_click_through(hwnd, True)
+            if not self._edit_mode:
+                # Make fill transparent so only the border shows
+                self.selector.attributes("-transparentcolor", AppConstants.SELECTOR_BG_COLOR)
+                _set_click_through(hwnd, True)
         except Exception as e:
             logger.warning(f"Click-through setup failed: {e}")
 
@@ -252,11 +251,7 @@ class RegionSelector:
 class TranslatorApp:
     def __init__(self):
         self.region: Dict[str, int] = {}
-        self.full_log: List[str] = []
         self.translation_history: List[Tuple[str, str, str]] = []
-        self.log_window: Optional[tk.Toplevel] = None
-        self.log_text_area: Optional[tk.Text] = None
-        self.original_text_visible = False
         self._job_in_flight = False
         self._last_speaker = AppConstants.UNKNOWN_SPEAKER
 
@@ -292,27 +287,40 @@ class TranslatorApp:
         screen_w = self.root.winfo_screenwidth()
         screen_h = self.root.winfo_screenheight()
 
-        win_w = int(screen_w * AppConstants.MAIN_WIDTH_RATIO)
-        win_h = int(screen_h * AppConstants.MAIN_HEIGHT_RATIO)
-        win_x = (screen_w - win_w) // 2
-        win_y = screen_h - win_h - 60
-        self.root.geometry(f"{win_w}x{win_h}+{win_x}+{win_y}")
+        cfg = read_json("config.json")
 
-        self.region = {
-            "top": int(screen_h * 0.45),
-            "left": (screen_w - int(screen_w * AppConstants.REGION_WIDTH_RATIO)) // 2,
-            "width": int(screen_w * AppConstants.REGION_WIDTH_RATIO),
-            "height": int(screen_h * AppConstants.REGION_HEIGHT_RATIO),
-        }
+        saved_geo = cfg.get("window_geometry")
+        if saved_geo:
+            self.root.geometry(saved_geo)
+        else:
+            win_w = int(screen_w * AppConstants.MAIN_WIDTH_RATIO)
+            win_h = int(screen_h * AppConstants.MAIN_HEIGHT_RATIO)
+            win_x = (screen_w - win_w) // 2
+            win_y = screen_h - win_h - 60
+            self.root.geometry(f"{win_w}x{win_h}+{win_x}+{win_y}")
+
+        saved_region = cfg.get("region")
+        if isinstance(saved_region, dict) and all(
+            k in saved_region for k in ("top", "left", "width", "height")
+        ):
+            self.region = dict(saved_region)
+        else:
+            self.region = {
+                "top": int(screen_h * 0.45),
+                "left": (screen_w - int(screen_w * AppConstants.REGION_WIDTH_RATIO)) // 2,
+                "width": int(screen_w * AppConstants.REGION_WIDTH_RATIO),
+                "height": int(screen_h * AppConstants.REGION_HEIGHT_RATIO),
+            }
 
         self.root.grid_rowconfigure(0, weight=1)
         self.root.grid_columnconfigure(0, weight=1)
         self.root.grid_columnconfigure(1, weight=0)
         self.root.grid_propagate(False)
 
+        font_size = cfg.get("font_size", AppConstants.DEFAULT_FONT_SIZE)
         self.default_font = tkFont.Font(
             family=AppConstants.DEFAULT_FONT_FAMILY,
-            size=AppConstants.DEFAULT_FONT_SIZE
+            size=font_size
         )
 
     def _setup_styles(self) -> None:
@@ -347,6 +355,8 @@ class TranslatorApp:
     def _create_button_frame(self) -> None:
         self.button_frame = tk.Frame(self.root)
         self.button_frame.grid(row=0, column=1, rowspan=3, sticky="ns", padx=5, pady=5)
+        self.button_frame.grid_columnconfigure(0, weight=1)
+        self.button_frame.grid_columnconfigure(1, weight=1)
 
         self.translate_btn = ttk.Button(
             self.button_frame,
@@ -362,15 +372,7 @@ class TranslatorApp:
             command=self.translate_original_text,
             style="Translate.TButton"
         )
-        self.retranslate_btn.grid(row=1, column=0, sticky="ew", padx=2, pady=2)
-
-        self.show_text_button = ttk.Button(
-            self.button_frame,
-            text="Show Raw",
-            command=self.toggle_original_text,
-            style="Translate.TButton"
-        )
-        self.show_text_button.grid(row=2, column=0, sticky="ew", padx=2, pady=2)
+        self.retranslate_btn.grid(row=0, column=1, sticky="ew", padx=2, pady=2)
 
         self.auto_btn = ttk.Button(
             self.button_frame,
@@ -378,35 +380,15 @@ class TranslatorApp:
             command=self.toggle_auto_detect,
             style="Translate.TButton"
         )
-        self.auto_btn.grid(row=3, column=0, sticky="ew", padx=2, pady=2)
+        self.auto_btn.grid(row=1, column=0, sticky="ew", padx=2, pady=2)
 
         self.edit_region_btn = ttk.Button(
             self.button_frame,
-            text="Edit Region",
+            text="Lock Region",
             command=self.toggle_edit_region,
             style="Translate.TButton"
         )
-        self.edit_region_btn.grid(row=4, column=0, sticky="ew", padx=2, pady=2)
-
-        self.log_button = ttk.Button(
-            self.button_frame,
-            text="Show Log",
-            command=self.toggle_log_window,
-            style="Translate.TButton"
-        )
-        self.log_button.grid(row=5, column=0, sticky="ew", padx=2, pady=2)
-
-        ttk.Button(
-            self.button_frame,
-            text="Export Log",
-            command=self.export_log_to_file,
-            style="Translate.TButton"
-        ).grid(row=6, column=0, sticky="ew", padx=2, pady=2)
-
-        font_frame = tk.Frame(self.button_frame)
-        font_frame.grid(row=7, column=0, sticky="ew", padx=2, pady=2)
-        tk.Button(font_frame, text="A-", width=3, command=self.decrease_font_size).pack(side="left", expand=True)
-        tk.Button(font_frame, text="A+", width=3, command=self.increase_font_size).pack(side="right", expand=True)
+        self.edit_region_btn.grid(row=1, column=1, sticky="ew", padx=2, pady=2)
 
     def _create_text_areas(self) -> None:
         self.original_frame = tk.Frame(self.root)
@@ -453,7 +435,11 @@ class TranslatorApp:
             relief="flat",
             bg=AppConstants.SETTINGS_BG_COLOR,
             fg=AppConstants.SETTINGS_FG_COLOR,
-            command=lambda: open_settings_window(self.root, on_hotkey_change=self._register_hotkey)
+            command=lambda: open_settings_window(
+                self.root,
+                on_hotkey_change=self._register_hotkey,
+                on_font_change=self._apply_font_size
+            )
         )
         self.settings_btn.place(relx=1.0, rely=1.0, x=-10, y=-10, anchor="se")
 
@@ -600,7 +586,6 @@ class TranslatorApp:
         self.translation_history.append((speaker, raw, translated))
         self.translation_history = self.translation_history[-10:]
 
-        self._update_log(translated)
         self._update_text_areas(raw, translated)
         self._set_status("Ready")
         self._set_buttons_enabled(True)
@@ -647,75 +632,8 @@ class TranslatorApp:
         self.translate_btn.config(state=state)
         self.retranslate_btn.config(state=state)
 
-    def increase_font_size(self) -> None:
-        self.default_font.configure(size=self.default_font.cget("size") + 2)
-
-    def decrease_font_size(self) -> None:
-        new_size = max(8, self.default_font.cget("size") - 2)
-        self.default_font.configure(size=new_size)
-
-    def toggle_original_text(self) -> None:
-        if self.original_text_visible:
-            self.original_frame.grid_remove()
-            self.show_text_button.config(text="Show Raw")
-        else:
-            self.original_frame.grid(row=1, column=0, sticky="nsew", padx=5, pady=2)
-            self.show_text_button.config(text="Hide Raw")
-        self.original_text_visible = not self.original_text_visible
-
-    def toggle_log_window(self) -> None:
-        if self.log_window and self.log_window.winfo_exists():
-            self._close_log_window()
-        else:
-            self._open_log_window()
-
-    def _open_log_window(self) -> None:
-        self.log_window = tk.Toplevel(self.root)
-        self.log_window.title("Log History")
-        screen_w = self.root.winfo_screenwidth()
-        screen_h = self.root.winfo_screenheight()
-        log_w = int(screen_w * AppConstants.LOG_WIDTH_RATIO)
-        log_h = int(screen_h * AppConstants.LOG_HEIGHT_RATIO)
-        self.log_window.geometry(f"{log_w}x{log_h}")
-
-        self.log_text_area = tk.Text(self.log_window, wrap="word", font=self.default_font)
-        self.log_text_area.pack(fill="both", expand=True, padx=5, pady=5)
-        self.log_text_area.insert("1.0", "\n\n".join(self.full_log))
-        self.log_text_area.config(state="disabled")
-
-        self.log_button.config(text="Hide Log")
-        self.log_window.protocol("WM_DELETE_WINDOW", self._close_log_window)
-
-    def _close_log_window(self) -> None:
-        if self.log_window:
-            self.log_window.destroy()
-            self.log_window = None
-            self.log_text_area = None
-            self.log_button.config(text="Show Log")
-
-    def export_log_to_file(self) -> None:
-        if not self.full_log:
-            messagebox.showinfo("Export Log", "No log entries to export.")
-            return
-        try:
-            file_path = filedialog.asksaveasfilename(
-                defaultextension=".txt",
-                filetypes=[("Text files", "*.txt"), ("All files", "*.*")]
-            )
-            if file_path:
-                with open(file_path, "w", encoding="utf-8") as f:
-                    f.write("\n\n".join(self.full_log))
-                messagebox.showinfo("Export Log", f"Log exported to {file_path}")
-        except Exception as e:
-            messagebox.showerror("Export Error", str(e))
-
-    def _update_log(self, translated_text: str) -> None:
-        self.full_log.append(translated_text)
-        if self.log_window and self.log_text_area:
-            self.log_text_area.config(state="normal")
-            self.log_text_area.insert(tk.END, f"{translated_text.strip()}\n\n")
-            self.log_text_area.config(state="disabled")
-            self.log_text_area.see(tk.END)
+    def _apply_font_size(self, size) -> None:
+        self.default_font.configure(size=int(size))
 
     def _update_text_areas(self, original_text: str, translated_text: str) -> None:
         self.text_area.delete(1.0, tk.END)
@@ -726,8 +644,23 @@ class TranslatorApp:
 
     # ── Lifecycle ─────────────────────────────────────────────────────────────
 
+    def _persist_layout(self) -> None:
+        try:
+            cfg = read_json("config.json")
+            cfg["window_geometry"] = self.root.winfo_geometry()
+            cfg["region"] = {
+                "top": int(self.region["top"]),
+                "left": int(self.region["left"]),
+                "width": int(self.region["width"]),
+                "height": int(self.region["height"]),
+            }
+            write_json("config.json", cfg)
+        except Exception as e:
+            logger.warning(f"Failed to persist layout: {e}")
+
     def _on_close(self) -> None:
         self._stop_auto_detect()
+        self._persist_layout()
         try:
             import keyboard
             keyboard.unhook_all_hotkeys()

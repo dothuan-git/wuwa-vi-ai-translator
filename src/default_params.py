@@ -22,6 +22,7 @@ DEFAULT_CONFIG = {
     "groq_model": "qwen/qwen3-32b",
     "groq_api_key": "",
     "ocr_engine": "windows",
+    "font_size": 16,
     "hotkey": "ctrl+shift+space",
     "easyocr_lg": ["en"],
     "google_ocr_api_key": "",
