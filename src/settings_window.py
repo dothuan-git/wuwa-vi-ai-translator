@@ -4,7 +4,12 @@ import json
 import os
 
 from utils import get_appdata_file_path, write_json, read_json
-from default_params import GROQ_MODELS, OCR_ENGINES, DEFAULT_CONFIG
+from default_params import (
+    PROVIDERS,
+    MODELS_BY_PROVIDER,
+    OCR_ENGINES,
+    DEFAULT_CONFIG,
+)
 
 
 CONFIG_PATH = get_appdata_file_path("config.json")
@@ -62,8 +67,12 @@ def open_settings_window(master, on_hotkey_change=None):
     config = read_json("config.json")
 
     google_ocr_var = tk.StringVar(value=config.get("google_ocr_api_key", ""))
+    provider_var = tk.StringVar(value=config.get("provider", DEFAULT_CONFIG["provider"]))
     groq_api_var = tk.StringVar(value=config.get("groq_api_key", ""))
-    groq_model_var = tk.StringVar(value=config.get("groq_model", DEFAULT_CONFIG["groq_model"]))
+    _init_provider = provider_var.get()
+    model_var = tk.StringVar(
+        value=config.get(f"{_init_provider}_model", DEFAULT_CONFIG["groq_model"])
+    )
     ocr_engine_var = tk.StringVar(value=config.get("ocr_engine", DEFAULT_CONFIG["ocr_engine"]))
     hotkey_var = tk.StringVar(value=config.get("hotkey", DEFAULT_CONFIG["hotkey"]))
     custom_prompt = config.get("custom_prompt", "")
@@ -94,8 +103,15 @@ def open_settings_window(master, on_hotkey_change=None):
     google_show_btn = google_row_frame.winfo_children()[-1]
     row += 1
 
+    # Provider
+    tk.Label(frm, text="Provider:", bg=LABEL_BG, fg=LABEL_FG).grid(row=row, column=0, sticky='w')
+    row += 1
+    provider_combo = ttk.Combobox(frm, textvariable=provider_var, values=PROVIDERS, state="readonly")
+    provider_combo.grid(row=row, column=0, sticky='ew', pady=(0, 8))
+    row += 1
+
     # Groq API key
-    tk.Label(frm, text="Groq API Key*:", bg=LABEL_BG, fg=LABEL_FG).grid(row=row, column=0, sticky='w')
+    tk.Label(frm, text="Groq API Key:", bg=LABEL_BG, fg=LABEL_FG).grid(row=row, column=0, sticky='w')
     row += 1
     groq_row_frame = tk.Frame(frm, bg=WINDOW_BG)
     groq_row_frame.grid(row=row, column=0, sticky='ew', pady=(0, 8))
@@ -110,9 +126,19 @@ def open_settings_window(master, on_hotkey_change=None):
     # Model
     tk.Label(frm, text="Model:", bg=LABEL_BG, fg=LABEL_FG).grid(row=row, column=0, sticky='w')
     row += 1
-    model_combo = ttk.Combobox(frm, textvariable=groq_model_var, values=GROQ_MODELS, state="readonly")
+    model_combo = ttk.Combobox(frm, textvariable=model_var, state="readonly")
     model_combo.grid(row=row, column=0, sticky='ew', pady=(0, 8))
     row += 1
+
+    def on_provider_change(*_):
+        p = provider_var.get()
+        models = MODELS_BY_PROVIDER.get(p, [])
+        model_combo["values"] = models
+        saved = config.get(f"{p}_model", DEFAULT_CONFIG[f"{p}_model"])
+        model_var.set(saved if saved in models else (models[0] if models else ""))
+
+    provider_combo.bind("<<ComboboxSelected>>", on_provider_change)
+    on_provider_change()
 
     # Hotkey
     tk.Label(frm, text="Hotkey (e.g. ctrl+shift+space):", bg=LABEL_BG, fg=LABEL_FG).grid(row=row, column=0, sticky='w')
@@ -132,9 +158,11 @@ def open_settings_window(master, on_hotkey_change=None):
 
     def save_settings():
         new_hotkey = hotkey_var.get().strip()
+        provider = provider_var.get()
         config["google_ocr_api_key"] = google_ocr_var.get().strip()
+        config["provider"] = provider
         config["groq_api_key"] = groq_api_var.get().strip()
-        config["groq_model"] = groq_model_var.get()
+        config[f"{provider}_model"] = model_var.get()
         config["ocr_engine"] = ocr_engine_var.get()
         config["hotkey"] = new_hotkey
         config["custom_prompt"] = custom_prompt_txt.get("1.0", "end-1c").strip()

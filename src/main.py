@@ -253,7 +253,7 @@ class TranslatorApp:
     def __init__(self):
         self.region: Dict[str, int] = {}
         self.full_log: List[str] = []
-        self.translation_history: List[Tuple[str, str]] = []
+        self.translation_history: List[Tuple[str, str, str]] = []
         self.log_window: Optional[tk.Toplevel] = None
         self.log_text_area: Optional[tk.Text] = None
         self.original_text_visible = False
@@ -597,7 +597,7 @@ class TranslatorApp:
 
     def _finish_translate(self, raw: str, translated: str, speaker: str) -> None:
         self._last_speaker = speaker
-        self.translation_history.append((raw, translated))
+        self.translation_history.append((speaker, raw, translated))
         self.translation_history = self.translation_history[-10:]
 
         self._update_log(translated)

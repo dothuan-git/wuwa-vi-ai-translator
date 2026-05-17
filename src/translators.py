@@ -2,10 +2,9 @@ import re
 import json
 import requests
 
-from utils import read_json, build_prompt
+from utils import read_json, build_prompt, build_history_prompt, build_glossary
 from default_params import DEFAULT_CONFIG
 
-GROQ_URL = DEFAULT_CONFIG["groq_api_url"]
 system_prompt = DEFAULT_CONFIG["system_prompt"]
 user_prompt = DEFAULT_CONFIG["user_prompt"]
 
@@ -19,14 +18,38 @@ def _strip_think(text: str) -> str:
     return text.strip()
 
 
+def _clip(text, limit):
+    """Truncate without splitting a word, so history examples stay clean."""
+    if len(text) <= limit:
+        return text
+    head = text[:limit]
+    return head.rsplit(' ', 1)[0] if ' ' in head else head
+
+
 def _build_messages(dialogue, speaker, history):
     MAX_HISTORY = 3
-    MAX_ENTRY_LEN = 500
-    messages = [{"role": "system", "content": system_prompt}]
+    MAX_ENTRY_LEN = 600
+
+    sys = system_prompt
+    glossary = build_glossary()
+    if glossary:
+        sys = f"{sys}\n\n{glossary}"
+    messages = [{"role": "system", "content": sys}]
+
     if history:
-        for orig, trans in history[-MAX_HISTORY:]:
-            messages.append({"role": "user", "content": orig[:MAX_ENTRY_LEN]})
-            messages.append({"role": "assistant", "content": trans[:MAX_ENTRY_LEN]})
+        for item in history[-MAX_HISTORY:]:
+            # Accept (speaker, orig, trans) triples; tolerate legacy (orig, trans).
+            if len(item) == 3:
+                h_speaker, h_orig, h_trans = item
+            else:
+                h_orig, h_trans = item
+                h_speaker = "unknown"
+            messages.append({
+                "role": "user",
+                "content": build_history_prompt(user_prompt, _clip(h_orig, MAX_ENTRY_LEN), h_speaker),
+            })
+            messages.append({"role": "assistant", "content": _clip(h_trans, MAX_ENTRY_LEN)})
+
     messages.append({"role": "user", "content": build_prompt(user_prompt, dialogue, speaker)})
     return messages
 
@@ -41,8 +64,10 @@ def translate_with_llama(dialogue, speaker="unknown", history=None, on_chunk=Non
         return "Không phát hiện văn bản."
 
     config = read_json("config.json")
-    api_key = config.get("groq_api_key", "")
-    model = config.get("groq_model", DEFAULT_CONFIG["groq_model"])
+    provider = config.get("provider", DEFAULT_CONFIG["provider"])
+    url = config.get(f"{provider}_api_url", DEFAULT_CONFIG["groq_api_url"])
+    api_key = config.get(f"{provider}_api_key", "")
+    model = config.get(f"{provider}_model", DEFAULT_CONFIG["groq_model"])
 
     messages = _build_messages(dialogue, speaker, history)
 
@@ -56,12 +81,15 @@ def translate_with_llama(dialogue, speaker="unknown", history=None, on_chunk=Non
         "temperature": 0.3,
         "stream": bool(on_chunk),
     }
+    if "qwen" in model.lower():
+        # Disable Qwen3 thinking pass — cuts latency for live dialogue.
+        payload["reasoning_effort"] = "none"
 
     try:
         if on_chunk:
-            return _stream_translate(headers, payload, on_chunk)
+            return _stream_translate(url, headers, payload, on_chunk)
         else:
-            response = requests.post(GROQ_URL, headers=headers, json=payload, timeout=30)
+            response = requests.post(url, headers=headers, json=payload, timeout=30)
             response.raise_for_status()
             text = response.json()["choices"][0]["message"]["content"].strip()
             return _strip_think(text)
@@ -75,13 +103,13 @@ def translate_with_llama(dialogue, speaker="unknown", history=None, on_chunk=Non
         return f"[Translation Error] {str(e)}"
 
 
-def _stream_translate(headers, payload, on_chunk):
-    """Stream SSE response from Groq and call on_chunk with visible partial text."""
+def _stream_translate(url, headers, payload, on_chunk):
+    """Stream SSE response from the provider and call on_chunk with visible partial text."""
     accumulated = ""
 
     try:
         with requests.post(
-            GROQ_URL, headers=headers, json=payload, stream=True, timeout=60
+            url, headers=headers, json=payload, stream=True, timeout=60
         ) as response:
             if not response.ok:
                 try:
