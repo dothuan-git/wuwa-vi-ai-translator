@@ -131,7 +131,14 @@ def open_settings_window(master, on_hotkey_change=None, on_font_change=None):
     tk.Label(frm, text="Model:", bg=LABEL_BG, fg=LABEL_FG).grid(row=row, column=0, sticky='w')
     row += 1
     model_combo = ttk.Combobox(frm, textvariable=model_var, state="readonly")
-    model_combo.grid(row=row, column=0, sticky='ew', pady=(0, 8))
+    model_combo.grid(row=row, column=0, sticky='ew', pady=(0, 2))
+    row += 1
+    tk.Label(
+        frm,
+        text="Tip: stronger models give better Vietnamese (e.g. Gemini 2.5 Flash).",
+        bg=LABEL_BG, fg="#7A7A8C", font=("Helvetica", 8),
+        wraplength=320, justify="left",
+    ).grid(row=row, column=0, sticky='w', pady=(0, 8))
     row += 1
 
     def on_provider_change(*_):

@@ -55,6 +55,8 @@
      - Custom prompt if desired.
      - Rover's name and gender (for pronoun adjustment).
 
+   > **Tip:** Translation quality depends heavily on the model. For more natural Vietnamese and better personal pronouns, prefer a stronger model (e.g. **Gemini 2.5 Flash**) over the default. Pick the provider/model in `Config`.
+
    > See [this guide](https://github.com/dothuan-git/wuwa-vi-ai-translator/blob/main/doc/api-setup-guide-en.md) for API key setup instructions.
 
 3. **Start Translating**

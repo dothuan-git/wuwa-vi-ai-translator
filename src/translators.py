@@ -2,7 +2,13 @@ import re
 import json
 import requests
 
-from utils import read_json, build_prompt, build_history_prompt, build_glossary
+from utils import (
+    read_json,
+    build_prompt,
+    build_history_prompt,
+    build_glossary,
+    UNKNOWN_SPEAKER,
+)
 from default_params import DEFAULT_CONFIG
 
 system_prompt = DEFAULT_CONFIG["system_prompt"]
@@ -26,6 +32,23 @@ def _clip(text, limit):
     return head.rsplit(' ', 1)[0] if ' ' in head else head
 
 
+def _speaker_of(item):
+    """Speaker label of a history item; tolerate legacy (orig, trans) pairs."""
+    return item[0] if len(item) == 3 else UNKNOWN_SPEAKER
+
+
+def _infer_addressee(prior_speakers, speaker):
+    """Likely addressee = the most recent prior speaker that differs from
+    `speaker` (skipping unknown). `prior_speakers` is chronological. Returns
+    UNKNOWN_SPEAKER when there is no dyad (no history, or narration)."""
+    if not speaker or speaker == UNKNOWN_SPEAKER:
+        return UNKNOWN_SPEAKER
+    for s in reversed(prior_speakers):
+        if s and s != UNKNOWN_SPEAKER and s != speaker:
+            return s
+    return UNKNOWN_SPEAKER
+
+
 def _build_messages(dialogue, speaker, history):
     MAX_HISTORY = 3
     MAX_ENTRY_LEN = 600
@@ -36,21 +59,33 @@ def _build_messages(dialogue, speaker, history):
         sys = f"{sys}\n\n{glossary}"
     messages = [{"role": "system", "content": sys}]
 
+    history = history or []
+    speakers = [_speaker_of(it) for it in history]
+
     if history:
-        for item in history[-MAX_HISTORY:]:
+        recent = history[-MAX_HISTORY:]
+        offset = len(history) - len(recent)
+        for idx, item in enumerate(recent):
             # Accept (speaker, orig, trans) triples; tolerate legacy (orig, trans).
             if len(item) == 3:
                 h_speaker, h_orig, h_trans = item
             else:
                 h_orig, h_trans = item
-                h_speaker = "unknown"
+                h_speaker = UNKNOWN_SPEAKER
+            h_addressee = _infer_addressee(speakers[: offset + idx], h_speaker)
             messages.append({
                 "role": "user",
-                "content": build_history_prompt(user_prompt, _clip(h_orig, MAX_ENTRY_LEN), h_speaker),
+                "content": build_history_prompt(
+                    user_prompt, _clip(h_orig, MAX_ENTRY_LEN), h_speaker, h_addressee
+                ),
             })
             messages.append({"role": "assistant", "content": _clip(h_trans, MAX_ENTRY_LEN)})
 
-    messages.append({"role": "user", "content": build_prompt(user_prompt, dialogue, speaker)})
+    addressee = _infer_addressee(speakers, speaker)
+    messages.append({
+        "role": "user",
+        "content": build_prompt(user_prompt, dialogue, speaker, addressee),
+    })
     return messages
 
 
@@ -78,7 +113,7 @@ def translate_with_llama(dialogue, speaker="unknown", history=None, on_chunk=Non
     payload = {
         "model": model,
         "messages": messages,
-        "temperature": 0.3,
+        "temperature": 0.6,
         "stream": bool(on_chunk),
     }
     _m = model.lower()

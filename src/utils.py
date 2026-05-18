@@ -31,8 +31,10 @@ def write_json(file_path, data):
 
 
 def ensure_config():
-    """Write default config.json and characters.json on first run."""
-    from default_params import DEFAULT_CONFIG
+    """Write default config.json on first run; seed characters.json with the
+    starter glossary when it is missing or still empty. Never clobbers a
+    user-curated file."""
+    from default_params import DEFAULT_CONFIG, DEFAULT_CHARACTERS
 
     config_path = get_appdata_file_path("config.json")
     if not os.path.exists(config_path):
@@ -40,7 +42,14 @@ def ensure_config():
 
     chars_path = get_appdata_file_path("characters.json")
     if not os.path.exists(chars_path):
-        write_json("characters.json", {})
+        write_json("characters.json", DEFAULT_CHARACTERS)
+    else:
+        try:
+            existing = read_json("characters.json")
+        except Exception:
+            existing = None  # corrupt file — leave it for the user to fix
+        if isinstance(existing, dict) and not existing:
+            write_json("characters.json", DEFAULT_CHARACTERS)
 
 
 UNKNOWN_SPEAKER = "unknown"
@@ -88,26 +97,33 @@ def standardize_dialog(lines):
     return speaker, dialogue, dialogue
 
 
-def _compose_request(user_prompt, dialogue, speaker, custom_prompt=""):
+def _compose_request(user_prompt, dialogue, speaker, addressee=UNKNOWN_SPEAKER,
+                     custom_prompt=""):
     prompt = user_prompt
     if speaker and speaker != UNKNOWN_SPEAKER:
         prompt += f"\n[Speaker: {speaker}]"
+        # Addressee only makes sense relative to a known speaker.
+        if addressee and addressee != UNKNOWN_SPEAKER and addressee != speaker:
+            prompt += f"\n[Addressee: {addressee}]"
     if custom_prompt and len(custom_prompt.strip()) > 4:
         prompt += "\nPrioritize this rule:\n" + custom_prompt
     prompt += "\n\nEnglish text:\n" + dialogue
     return prompt
 
 
-def build_prompt(user_prompt, dialogue, speaker=UNKNOWN_SPEAKER):
+def build_prompt(user_prompt, dialogue, speaker=UNKNOWN_SPEAKER,
+                 addressee=UNKNOWN_SPEAKER):
     """Live-turn user message: includes the user's custom rule."""
     custom_prompt = read_json("config.json").get("custom_prompt", "")
-    return _compose_request(user_prompt, dialogue, speaker, custom_prompt)
+    return _compose_request(user_prompt, dialogue, speaker, addressee,
+                            custom_prompt)
 
 
-def build_history_prompt(user_prompt, dialogue, speaker=UNKNOWN_SPEAKER):
+def build_history_prompt(user_prompt, dialogue, speaker=UNKNOWN_SPEAKER,
+                         addressee=UNKNOWN_SPEAKER):
     """History user message: same structure as the live turn (so few-shot
     examples match the real query) but without repeating the custom rule."""
-    return _compose_request(user_prompt, dialogue, speaker)
+    return _compose_request(user_prompt, dialogue, speaker, addressee)
 
 
 def build_glossary(max_entries=40):
