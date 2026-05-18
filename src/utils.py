@@ -31,9 +31,15 @@ def write_json(file_path, data):
 
 
 def ensure_config():
-    """Write default config.json on first run; seed characters.json with the
-    starter glossary when it is missing or still empty. Never clobbers a
-    user-curated file."""
+    """Write default config.json on first run; seed/update characters.json.
+
+    - Missing file: write DEFAULT_CHARACTERS.
+    - Empty dict: write DEFAULT_CHARACTERS.
+    - Non-empty dict: merge — add any DEFAULT_CHARACTERS keys not already
+      present (never overwrites user-customised entries, so custom pronouns
+      and deletions are respected for existing keys).
+    - Corrupt file: leave it for the user to fix.
+    """
     from default_params import DEFAULT_CONFIG, DEFAULT_CHARACTERS
 
     config_path = get_appdata_file_path("config.json")
@@ -43,13 +49,24 @@ def ensure_config():
     chars_path = get_appdata_file_path("characters.json")
     if not os.path.exists(chars_path):
         write_json("characters.json", DEFAULT_CHARACTERS)
+        return
+
+    try:
+        existing = read_json("characters.json")
+    except Exception:
+        return  # corrupt — leave it for the user to fix
+
+    if not isinstance(existing, dict):
+        return
+
+    if not existing:
+        write_json("characters.json", DEFAULT_CHARACTERS)
     else:
-        try:
-            existing = read_json("characters.json")
-        except Exception:
-            existing = None  # corrupt file — leave it for the user to fix
-        if isinstance(existing, dict) and not existing:
-            write_json("characters.json", DEFAULT_CHARACTERS)
+        new_entries = {k: v for k, v in DEFAULT_CHARACTERS.items()
+                       if k not in existing}
+        if new_entries:
+            existing.update(new_entries)
+            write_json("characters.json", existing)
 
 
 UNKNOWN_SPEAKER = "unknown"
@@ -126,7 +143,7 @@ def build_history_prompt(user_prompt, dialogue, speaker=UNKNOWN_SPEAKER,
     return _compose_request(user_prompt, dialogue, speaker, addressee)
 
 
-def build_glossary(max_entries=40):
+def build_glossary(max_entries=60):
     """Build a character/term glossary block from characters.json so the
     model keeps names and pronouns consistent. Returns "" when empty so it
     is a no-op until the user populates the file."""

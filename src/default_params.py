@@ -224,4 +224,135 @@ DEFAULT_CHARACTERS = {
         "role": "Phản diện Fractsidus, nguy hiểm",
         "pronoun": "kẻ thù: ta–ngươi",
     },
+    # ── v1.x additions ──────────────────────────────────────────────────────────
+    "Yuanwu": {
+        "gender": "nam",
+        "role": "Chiến binh Jinzhou 4★, trầm tĩnh, đáng tin",
+        "pronoun": "ngay thẳng, điềm tĩnh: tôi–bạn / anh–em",
+    },
+    "Zhezhi": {
+        "gender": "nữ",
+        "role": "Họa linh (tinh linh mực vẽ) Jinzhou, thanh thoát",
+        "pronoun": "nhẹ nhàng, tao nhã: tôi–bạn / chị–em với người nhỏ hơn",
+    },
+    "Xiangli Yao": {
+        "gender": "nam",
+        "role": "Nhà khoa học Union, phân tích, lý trí",
+        "pronoun": "học thuật, lịch sự: tôi–bạn; đôi khi vụng về trong giao tiếp",
+    },
+    "Youhu": {
+        "gender": "nữ",
+        "role": "Cô gái trẻ Jinzhou 4★, hồn nhiên, hỗ trợ phục hồi",
+        "pronoun": "trẻ trung, tinh nghịch: tớ–cậu / mình–bạn",
+    },
+    "Lumi": {
+        "gender": "nữ",
+        "role": "Resonator Electro 4★, hoạt bát, tấn công đa chế độ",
+        "pronoun": "năng động, thân thiện: tôi–bạn / mình–cậu",
+    },
+    # ── v2.0 Rinascita ──────────────────────────────────────────────────────────
+    "Roccia": {
+        "gender": "nữ",
+        "role": "Đại phó thuyền Đoàn Hề Rinascita, diễn viên hài, trầm tĩnh, chỉn chu",
+        "pronoun": "điềm đạm, duyên dáng: tôi–bạn; uy quyền khi quản lý đoàn",
+    },
+    "Ciaccona": {
+        "gender": "nữ",
+        "role": "Bard Rinascita đầu tiên, hỗ trợ Erosion, Liberation dạng hòa nhạc",
+        "pronoun": "thi vị, nhẹ nhàng: tôi–bạn",
+    },
+    "Cantarella": {
+        "gender": "nữ",
+        "role": "Rinascita, trị liệu/hỗ trợ, tao nhã, quản lý Forte",
+        "pronoun": "lịch thiệp, tinh tế: tôi–bạn / chị–em",
+    },
+    # ── v2.x ────────────────────────────────────────────────────────────────────
+    "Zani": {
+        "gender": "nữ",
+        "role": "Resonator Spectro, Inferno mode, quyết đoán",
+        "pronoun": "thẳng thắn, mạnh mẽ: tôi–bạn",
+    },
+    "Cartethyia": {
+        "gender": "nữ",
+        "role": "Resonator Aero, kiếm sĩ tấn công",
+        "pronoun": "tôi–bạn",
+    },
+    "Phrolova": {
+        "gender": "nữ",
+        "role": "Bậc thầy con rối (Hecate), off-field DPS Havoc, bí ẩn",
+        "pronoun": "lạnh lùng, bí hiểm: tôi–bạn; ta–ngươi với kẻ địch",
+    },
+    "Galbrena": {
+        "gender": "nữ",
+        "role": "'Thợ săn Discord', Tư vấn Black Shores, hung hăng",
+        "pronoun": "thẳng thắn, dữ dội: tôi–bạn; ta–ngươi với kẻ thù",
+    },
+    "Augusta": {
+        "gender": "nữ",
+        "role": "Đấu sĩ bất bại, ý chí sắt đá, dũng cảm",
+        "pronoun": "đanh thép, quyết đoán: tôi–bạn; ta–ngươi trong chiến đấu",
+    },
+    "Lupa": {
+        "gender": "nữ",
+        "role": "Resonator Fusion, hỗ trợ kiêm off-field follow-up DPS",
+        "pronoun": "tôi–bạn",
+    },
+    # ── v2.6 Septimont ──────────────────────────────────────────────────────────
+    "Iuno": {
+        "gender": "nữ",
+        "role": "Nữ tu sĩ tiên tri Septimont, đọc tương lai qua ánh trăng",
+        "pronoun": "trang trọng, huyền bí: tôi–bạn; ngôn ngữ thiêng liêng với thánh thần",
+    },
+    "Qiuyuan": {
+        "gender": "nam",
+        "role": "Resonator Aero, vóc dáng cao lớn",
+        "pronoun": "anh–em / tôi–bạn",
+    },
+    "Lynae": {
+        "gender": "nữ",
+        "role": "Buffer/hỗ trợ Spectro cơ động, trượt patin, nhanh nhẹn",
+        "pronoun": "năng động, cởi mở: tôi–bạn / mình–cậu",
+    },
+    # ── v3.x Startorch Academy ──────────────────────────────────────────────────
+    "Mornye": {
+        "gender": "nữ",
+        "role": "Giáo sư kín đáo, nhà nghiên cứu vùng Startorch, muốn vượt thời gian",
+        "pronoun": "học thuật, trầm lặng: tôi–bạn; trang trọng với người lạ",
+    },
+    "Aemeath": {
+        "gender": "nữ",
+        "role": "Người Frostlands/bộ tộc Roya, cựu Synchronist Startorch, đã mất thể xác",
+        "pronoun": "huyền bí, xa cách: tôi–bạn",
+    },
+    "Luuk Herssen": {
+        "gender": "nam",
+        "role": "Bác sĩ trưởng / tư vấn tâm lý Startorch Academy",
+        "pronoun": "ấm áp, chuyên nghiệp: tôi–bạn / anh–em",
+    },
+    "Sigrika": {
+        "gender": "nữ",
+        "role": "Học sinh Startorch, Solsworn bộ tộc Roya, thành viên CLB ngắm chim",
+        "pronoun": "trẻ trung, tò mò: tôi–bạn / tớ–cậu",
+    },
+    # ── v3.x others ─────────────────────────────────────────────────────────────
+    "Chisa": {
+        "gender": "nữ",
+        "role": "Hỗ trợ Havoc đa năng, đánh dấu kẻ địch, cưa xích",
+        "pronoun": "tôi–bạn",
+    },
+    "Buling": {
+        "gender": "nữ",
+        "role": "Resonator Electro 4★",
+        "pronoun": "tôi–bạn",
+    },
+    "Hiyuki": {
+        "gender": "nữ",
+        "role": "Resonator Glacio (v3.3)",
+        "pronoun": "tôi–bạn",
+    },
+    "Denia": {
+        "gender": "nữ",
+        "role": "Resonator Fusion (v3.3)",
+        "pronoun": "tôi–bạn",
+    },
 }
