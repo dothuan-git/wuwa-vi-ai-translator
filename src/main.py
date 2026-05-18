@@ -340,6 +340,34 @@ class TranslatorApp:
             background=[("active", AppConstants.BUTTON_ACTIVE_BG), ("pressed", "#90D7DC")],
             foreground=[("active", AppConstants.BUTTON_ACTIVE_FG)]
         )
+        self.style.configure(
+            "Pronoun.TButton",
+            font=AppConstants.BUTTON_FONT,
+            background="#FFA040",
+            foreground="#6B2800",
+            padding=4,
+            borderwidth=2,
+            relief="flat"
+        )
+        self.style.map(
+            "Pronoun.TButton",
+            background=[("active", "#E56B00"), ("pressed", "#CC5500")],
+            foreground=[("active", "#FFFFFF")]
+        )
+        self.style.configure(
+            "ActivePronoun.TButton",
+            font=AppConstants.BUTTON_FONT,
+            background="#E56B00",
+            foreground="#FFFFFF",
+            padding=4,
+            borderwidth=2,
+            relief="flat"
+        )
+        self.style.map(
+            "ActivePronoun.TButton",
+            background=[("active", "#CC5500"), ("pressed", "#B34700")],
+            foreground=[("active", "#FFFFFF")]
+        )
 
     def _create_region_selector(self) -> None:
         self.region_selector = RegionSelector(self.root, self.region)
@@ -355,8 +383,9 @@ class TranslatorApp:
     def _create_button_frame(self) -> None:
         self.button_frame = tk.Frame(self.root)
         self.button_frame.grid(row=0, column=1, rowspan=3, sticky="ns", padx=5, pady=5)
-        self.button_frame.grid_columnconfigure(0, weight=1)
-        self.button_frame.grid_columnconfigure(1, weight=1)
+        # 4 equal columns: existing buttons span 2 each; pronoun buttons span 1 each
+        for col in range(4):
+            self.button_frame.grid_columnconfigure(col, weight=1)
 
         self.translate_btn = ttk.Button(
             self.button_frame,
@@ -364,7 +393,7 @@ class TranslatorApp:
             command=self._trigger_translate,
             style="Translate.TButton"
         )
-        self.translate_btn.grid(row=0, column=0, sticky="ew", padx=2, pady=2)
+        self.translate_btn.grid(row=0, column=0, columnspan=2, sticky="ew", padx=2, pady=2)
 
         self.retranslate_btn = ttk.Button(
             self.button_frame,
@@ -372,7 +401,7 @@ class TranslatorApp:
             command=self.translate_original_text,
             style="Translate.TButton"
         )
-        self.retranslate_btn.grid(row=0, column=1, sticky="ew", padx=2, pady=2)
+        self.retranslate_btn.grid(row=0, column=2, columnspan=2, sticky="ew", padx=2, pady=2)
 
         self.auto_btn = ttk.Button(
             self.button_frame,
@@ -380,7 +409,7 @@ class TranslatorApp:
             command=self.toggle_auto_detect,
             style="Translate.TButton"
         )
-        self.auto_btn.grid(row=1, column=0, sticky="ew", padx=2, pady=2)
+        self.auto_btn.grid(row=1, column=0, columnspan=2, sticky="ew", padx=2, pady=2)
 
         self.edit_region_btn = ttk.Button(
             self.button_frame,
@@ -388,7 +417,22 @@ class TranslatorApp:
             command=self.toggle_edit_region,
             style="Translate.TButton"
         )
-        self.edit_region_btn.grid(row=1, column=1, sticky="ew", padx=2, pady=2)
+        self.edit_region_btn.grid(row=1, column=2, columnspan=2, sticky="ew", padx=2, pady=2)
+
+        # Pronoun buttons: 4 half-width buttons in one row
+        self._pronoun_btns: dict = {}
+        _PRONOUN_OPTIONS = ["tôi", "tớ", "anh", "ta"]
+        saved_pronoun = read_json("config.json").get("rover_pronoun", "tôi")
+        for i, pronoun in enumerate(_PRONOUN_OPTIONS):
+            btn = ttk.Button(
+                self.button_frame,
+                text=pronoun,
+                command=lambda p=pronoun: self._select_rover_pronoun(p),
+                style="Pronoun.TButton"
+            )
+            btn.grid(row=2, column=i, sticky="ew", padx=2, pady=2)
+            self._pronoun_btns[pronoun] = btn
+        self._update_pronoun_buttons(saved_pronoun)
 
     def _create_text_areas(self) -> None:
         self.original_frame = tk.Frame(self.root)
@@ -511,6 +555,18 @@ class TranslatorApp:
     def toggle_edit_region(self) -> None:
         editing = self.region_selector.toggle_edit_mode()
         self.edit_region_btn.config(text="Lock Region" if editing else "Edit Region")
+
+    # ── Rover pronoun ─────────────────────────────────────────────────────────
+
+    def _select_rover_pronoun(self, pronoun: str) -> None:
+        cfg = read_json("config.json")
+        cfg["rover_pronoun"] = pronoun
+        write_json("config.json", cfg)
+        self._update_pronoun_buttons(pronoun)
+
+    def _update_pronoun_buttons(self, active: str) -> None:
+        for pronoun, btn in self._pronoun_btns.items():
+            btn.configure(style="ActivePronoun.TButton" if pronoun == active else "Pronoun.TButton")
 
     # ── Translation pipeline ──────────────────────────────────────────────────
 

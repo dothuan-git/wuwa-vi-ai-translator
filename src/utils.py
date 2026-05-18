@@ -91,10 +91,27 @@ def _looks_like_speaker(line):
     return not re.search(r'[.!?,:;"]', s)
 
 
+def _get_known_names():
+    """Return the set of character names from characters.json.
+    Called once per capture; the file is small so no caching needed."""
+    try:
+        chars = read_json("characters.json")
+        return set(chars.keys()) if isinstance(chars, dict) else set()
+    except Exception:
+        return set()
+
+
 def standardize_dialog(lines):
     """Return (speaker, dialogue, original) where dialogue is always the
     normalized text sent to the model. speaker is UNKNOWN_SPEAKER when no
-    speaker label is present (narration / system text)."""
+    speaker label is present (narration / system text).
+
+    Speaker detection priority:
+      1. 'F' marker → Rover (interact prompt).
+      2. First line is an exact known character name → speaker confirmed.
+      3. Heuristic (_looks_like_speaker) → catches unnamed NPCs.
+      4. No speaker found → UNKNOWN_SPEAKER (narration / system text).
+    """
     parts = [p.strip() for p in lines.strip().split('\n') if p.strip()]
     if not parts:
         return UNKNOWN_SPEAKER, "", ""
@@ -104,14 +121,14 @@ def standardize_dialog(lines):
         dialogue = _normalize(' '.join(p for p in parts if p != 'F'))
         return "Rover", dialogue, dialogue
 
-    if len(parts) >= 2 and _looks_like_speaker(parts[0]):
-        speaker = parts[0]
-        dialogue = _normalize(' '.join(parts[1:]))
-    else:
-        speaker = UNKNOWN_SPEAKER
-        dialogue = _normalize(' '.join(parts))
+    if len(parts) >= 2:
+        candidate = parts[0]
+        known_names = _get_known_names()
+        is_speaker = (candidate in known_names) or _looks_like_speaker(candidate)
+        if is_speaker:
+            return candidate, _normalize(' '.join(parts[1:])), _normalize(' '.join(parts[1:]))
 
-    return speaker, dialogue, dialogue
+    return UNKNOWN_SPEAKER, _normalize(' '.join(parts)), _normalize(' '.join(parts))
 
 
 def _compose_request(user_prompt, dialogue, speaker, addressee=UNKNOWN_SPEAKER,
@@ -143,15 +160,46 @@ def build_history_prompt(user_prompt, dialogue, speaker=UNKNOWN_SPEAKER,
     return _compose_request(user_prompt, dialogue, speaker, addressee)
 
 
-def build_glossary(max_entries=60):
-    """Build a character/term glossary block from characters.json so the
-    model keeps names and pronouns consistent. Returns "" when empty so it
-    is a no-op until the user populates the file."""
+_ROVER_PRONOUN_PAIRS = {
+    "tôi": "xưng 'tôi', gọi người kia là 'bạn'; cặp tôi–bạn (trung tính, lịch sự)",
+    "tớ": "xưng 'tớ', gọi người kia là 'cậu'; cặp tớ–cậu (trẻ trung, thân mật)",
+    "anh": "xưng 'anh', gọi người kia là 'em'; cặp anh–em (Rover vai anh/đàn anh)",
+    "ta": "xưng 'ta', gọi người kia là 'ngươi'; cặp ta–ngươi (cổ kính, thù địch)",
+}
+_ROVER_GENDER_VI = {"male": "nam", "female": "nữ"}
+
+
+def build_glossary(filter_names=None, max_entries=60):
+    """Build a character/term glossary block for the given participants.
+
+    filter_names: set of speaker/addressee names seen in the current turn +
+    history. Only entries whose key is in filter_names are included. Pass
+    None to include all (legacy behaviour). Returns "" when no entries match
+    so the section is omitted entirely from the prompt.
+    """
     try:
         characters = read_json("characters.json")
     except Exception:
         return ""
     if not isinstance(characters, dict) or not characters:
+        return ""
+
+    # Override Rover's pronoun note from config so it always reflects the
+    # player's chosen pronoun, even if characters.json has a stale value.
+    if "Rover" in characters and isinstance(characters["Rover"], dict):
+        cfg = read_json("config.json")
+        rover_gender = cfg.get("rover_gender", "male")
+        rover_pronoun = cfg.get("rover_pronoun", "tôi")
+        rover_entry = dict(characters["Rover"])
+        rover_entry["gender"] = _ROVER_GENDER_VI.get(rover_gender, "nam")
+        rover_entry["pronoun"] = _ROVER_PRONOUN_PAIRS.get(rover_pronoun, _ROVER_PRONOUN_PAIRS["tôi"])
+        characters = dict(characters)
+        characters["Rover"] = rover_entry
+
+    if filter_names is not None:
+        characters = {k: v for k, v in characters.items() if k in filter_names}
+
+    if not characters:
         return ""
 
     entries = []

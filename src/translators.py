@@ -53,14 +53,20 @@ def _build_messages(dialogue, speaker, history):
     MAX_HISTORY = 3
     MAX_ENTRY_LEN = 600
 
+    history = history or []
+    speakers = [_speaker_of(it) for it in history]
+
+    # Collect every named participant across history + current turn so the
+    # glossary is scoped to just the characters actually present.
+    participants = {s for s in speakers if s and s != UNKNOWN_SPEAKER}
+    if speaker and speaker != UNKNOWN_SPEAKER:
+        participants.add(speaker)
+
     sys = system_prompt
-    glossary = build_glossary()
+    glossary = build_glossary(filter_names=participants if participants else None)
     if glossary:
         sys = f"{sys}\n\n{glossary}"
     messages = [{"role": "system", "content": sys}]
-
-    history = history or []
-    speakers = [_speaker_of(it) for it in history]
 
     if history:
         recent = history[-MAX_HISTORY:]

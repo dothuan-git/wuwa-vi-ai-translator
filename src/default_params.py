@@ -35,6 +35,8 @@ DEFAULT_CONFIG = {
     "hotkey": "ctrl+shift+space",
     "easyocr_lg": ["en"],
     "google_ocr_api_key": "",
+    "rover_gender": "male",
+    "rover_pronoun": "tôi",
     "custom_prompt": "",
     "system_prompt": (
         "You are a professional Vietnamese game localizer for Wuthering Waves (Mingchao). "
@@ -196,12 +198,12 @@ DEFAULT_CHARACTERS = {
     },
     "Camellya": {
         "gender": "nữ",
-        "role": "Resonator vùng Rinascita, cuồng nhiệt ám ảnh",
+        "role": "Người thu thập tin tức của Blackshore, cuồng nhiệt ám ảnh",
         "pronoun": "say đắm, mãnh liệt: tôi/em–anh; ta–ngươi khi hiếu chiến",
     },
     "Carlotta": {
         "gender": "nữ",
-        "role": "Quý tộc Rinascita, thanh lịch",
+        "role": "Chủ nhà quý tộc Montelli của Rinascita, thanh lịch",
         "pronoun": "đài các, trang trọng: tôi–ngài/anh",
     },
     "Phoebe": {
@@ -211,7 +213,7 @@ DEFAULT_CHARACTERS = {
     },
     "Brant": {
         "gender": "nam",
-        "role": "Thuyền trưởng Rinascita, lôi cuốn",
+        "role": "Thuyền trưởng Đoàn Tàu Hề Rinascita, lôi cuốn",
         "pronoun": "phóng khoáng, tự tin: tôi–anh em/các bạn",
     },
     "Shorekeeper": {
@@ -227,7 +229,7 @@ DEFAULT_CHARACTERS = {
     # ── v1.x additions ──────────────────────────────────────────────────────────
     "Yuanwu": {
         "gender": "nam",
-        "role": "Chiến binh Jinzhou 4★, trầm tĩnh, đáng tin",
+        "role": "Chiến binh Jinzhou, trầm tĩnh, đáng tin",
         "pronoun": "ngay thẳng, điềm tĩnh: tôi–bạn / anh–em",
     },
     "Zhezhi": {
@@ -242,44 +244,44 @@ DEFAULT_CHARACTERS = {
     },
     "Youhu": {
         "gender": "nữ",
-        "role": "Cô gái trẻ Jinzhou 4★, hồn nhiên, hỗ trợ phục hồi",
+        "role": "Cô gái trẻ Jinzhou, hồn nhiên",
         "pronoun": "trẻ trung, tinh nghịch: tớ–cậu / mình–bạn",
     },
     "Lumi": {
         "gender": "nữ",
-        "role": "Resonator Electro 4★, hoạt bát, tấn công đa chế độ",
+        "role": "Người giao hàng, hoạt bát",
         "pronoun": "năng động, thân thiện: tôi–bạn / mình–cậu",
     },
     # ── v2.0 Rinascita ──────────────────────────────────────────────────────────
     "Roccia": {
         "gender": "nữ",
-        "role": "Đại phó thuyền Đoàn Hề Rinascita, diễn viên hài, trầm tĩnh, chỉn chu",
+        "role": "Phó thuyền Đoàn Tàu Hề Rinascita, trầm tĩnh, chỉn chu",
         "pronoun": "điềm đạm, duyên dáng: tôi–bạn; uy quyền khi quản lý đoàn",
     },
     "Ciaccona": {
         "gender": "nữ",
-        "role": "Bard Rinascita đầu tiên, hỗ trợ Erosion, Liberation dạng hòa nhạc",
+        "role": "Bard vùng Rinascita, vui vẻ, lạc quan",
         "pronoun": "thi vị, nhẹ nhàng: tôi–bạn",
     },
     "Cantarella": {
         "gender": "nữ",
-        "role": "Rinascita, trị liệu/hỗ trợ, tao nhã, quản lý Forte",
+        "role": "Đứng đầu nhà quý tộc Fisalia, cựu Blessed Maiden",
         "pronoun": "lịch thiệp, tinh tế: tôi–bạn / chị–em",
     },
     # ── v2.x ────────────────────────────────────────────────────────────────────
     "Zani": {
         "gender": "nữ",
-        "role": "Resonator Spectro, Inferno mode, quyết đoán",
+        "role": "Nhân viên bảo vệ của nhà Montelli, quyết đoán",
         "pronoun": "thẳng thắn, mạnh mẽ: tôi–bạn",
     },
     "Cartethyia": {
         "gender": "nữ",
-        "role": "Resonator Aero, kiếm sĩ tấn công",
-        "pronoun": "tôi–bạn",
+        "role": "Blessed Maiden, vật chủ của Threnodian",
+        "pronoun": "dịu dàng, mạnh mẽ: tôi–bạn",
     },
     "Phrolova": {
         "gender": "nữ",
-        "role": "Bậc thầy con rối (Hecate), off-field DPS Havoc, bí ẩn",
+        "role": "Nhạc trưởng sa ngã, bí ẩn",
         "pronoun": "lạnh lùng, bí hiểm: tôi–bạn; ta–ngươi với kẻ địch",
     },
     "Galbrena": {
@@ -294,7 +296,7 @@ DEFAULT_CHARACTERS = {
     },
     "Lupa": {
         "gender": "nữ",
-        "role": "Resonator Fusion, hỗ trợ kiêm off-field follow-up DPS",
+        "role": "Đấu sĩ, độc lập, mạnh mẽ",
         "pronoun": "tôi–bạn",
     },
     # ── v2.6 Septimont ──────────────────────────────────────────────────────────
@@ -305,24 +307,24 @@ DEFAULT_CHARACTERS = {
     },
     "Qiuyuan": {
         "gender": "nam",
-        "role": "Resonator Aero, vóc dáng cao lớn",
-        "pronoun": "anh–em / tôi–bạn",
+        "role": "Kiếm sĩ mù lang bạt, vóc dáng cao lớn",
+        "pronoun": "lạnh lùng: tôi–bạn; ta–ngươi với kẻ thù",
     },
     "Lynae": {
         "gender": "nữ",
-        "role": "Buffer/hỗ trợ Spectro cơ động, trượt patin, nhanh nhẹn",
+        "role": "Học viên hoạt bát của Startorch Academy",
         "pronoun": "năng động, cởi mở: tôi–bạn / mình–cậu",
     },
     # ── v3.x Startorch Academy ──────────────────────────────────────────────────
     "Mornye": {
         "gender": "nữ",
-        "role": "Giáo sư kín đáo, nhà nghiên cứu vùng Startorch, muốn vượt thời gian",
+        "role": "Giáo sư kín đáo, nhà nghiên cứu vùng Startorch",
         "pronoun": "học thuật, trầm lặng: tôi–bạn; trang trọng với người lạ",
     },
     "Aemeath": {
         "gender": "nữ",
-        "role": "Người Frostlands/bộ tộc Roya, cựu Synchronist Startorch, đã mất thể xác",
-        "pronoun": "huyền bí, xa cách: tôi–bạn",
+        "role": "Người Cộng Hưởng của Extrostrider, gia đình của Rover (player)",
+        "pronoun": "ấm áp, thân thiện: tôi–bạn",
     },
     "Luuk Herssen": {
         "gender": "nam",
@@ -337,22 +339,22 @@ DEFAULT_CHARACTERS = {
     # ── v3.x others ─────────────────────────────────────────────────────────────
     "Chisa": {
         "gender": "nữ",
-        "role": "Hỗ trợ Havoc đa năng, đánh dấu kẻ địch, cưa xích",
-        "pronoun": "tôi–bạn",
+        "role": "Học viên Startorch",
+        "pronoun": "thân thiện: tôi–bạn",
     },
     "Buling": {
         "gender": "nữ",
-        "role": "Resonator Electro 4★",
+        "role": "Thầy bói dạo của Blackshores, bí ẩn, nói nhiều",
         "pronoun": "tôi–bạn",
     },
     "Hiyuki": {
         "gender": "nữ",
-        "role": "Resonator Glacio (v3.3)",
+        "role": "Miko của Flaming Sakura, dịu dàng, cương trực",
         "pronoun": "tôi–bạn",
     },
     "Denia": {
         "gender": "nữ",
-        "role": "Resonator Fusion (v3.3)",
+        "role": "Con rối của Grand Architect, lười biếng, thư giãn",
         "pronoun": "tôi–bạn",
     },
 }
