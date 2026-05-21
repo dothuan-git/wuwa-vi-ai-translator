@@ -95,7 +95,7 @@ def translate_with_llama(dialogue, speaker="unknown", history=None, on_chunk=Non
     payload = {
         "model": model,
         "messages": messages,
-        "temperature": 0.3,
+        "temperature": 0.4,
         "stream": bool(on_chunk),
     }
     _m = model.lower()

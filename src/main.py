@@ -680,46 +680,14 @@ class TranslatorApp:
     def _on_other_self_click(self, pronoun: str) -> None:
         self._other_self = None if self._other_self == pronoun else pronoun
         self._refresh_pronoun_column(self._other_self_btns, self._other_self, self._other_style_pair)
-        self._save_other_pronouns()
 
     def _on_other_to_rover_click(self, pronoun: str) -> None:
         self._other_to_rover = None if self._other_to_rover == pronoun else pronoun
         self._refresh_pronoun_column(self._other_to_rover_btns, self._other_to_rover, self._other_style_pair)
-        self._save_other_pronouns()
-
-    def _save_other_pronouns(self) -> None:
-        if not self.current_other_speaker:
-            return
-        chars = read_json("characters.json")
-        if not isinstance(chars, dict):
-            chars = {}
-        if self.current_other_speaker not in chars:
-            chars[self.current_other_speaker] = {}
-        chars[self.current_other_speaker]["self_pronoun"] = self._other_self or ""
-        chars[self.current_other_speaker]["addressee_pronoun"] = self._other_to_rover or ""
-        write_json("characters.json", chars)
-
-    def _load_other_pronouns(self, speaker: str) -> Tuple[str, str]:
-        """Return (self_pronoun, addressee_pronoun) for speaker; defaults if unknown."""
-        try:
-            chars = read_json("characters.json")
-            if isinstance(chars, dict) and speaker in chars:
-                entry = chars[speaker]
-                if isinstance(entry, dict):
-                    return (
-                        entry.get("self_pronoun", "tôi") or None,
-                        entry.get("addressee_pronoun", "bạn") or None,
-                    )
-        except Exception:
-            pass
-        return "tôi", "bạn"
 
     def _update_other_bar(self, speaker: str) -> None:
-        """Switch the right pronoun bar to reflect the given speaker."""
+        """Update the right bar header when speaker changes; keep current pronoun selections."""
         self.current_other_speaker = speaker
-        self._other_self, self._other_to_rover = self._load_other_pronouns(speaker)
-        self._refresh_pronoun_column(self._other_self_btns, self._other_self, self._other_style_pair)
-        self._refresh_pronoun_column(self._other_to_rover_btns, self._other_to_rover, self._other_style_pair)
         self._other_header_var.set(speaker or AppConstants.NO_SPEAKER_LABEL)
 
     def _get_current_pronouns(self, speaker: str) -> Optional[dict]:

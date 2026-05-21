@@ -76,7 +76,7 @@ def translate_with_llama(text):
             {"role": "system", "content": "You are a professional English-to-Vietnamese translator for Wuthering Waves game."},
             {"role": "user", "content": f"Translate the following English text into Vietnamese. Do not translate proper names, character names and capital name (e.g., people, places, organizations). Return only the Vietnamese translation without additional explanation or formatting:\n{text}"}
         ],
-        "temperature": 0.5
+        "temperature": 0.4
     }
 
     try:

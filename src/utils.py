@@ -142,19 +142,19 @@ def standardize_dialog(lines):
 
 def _compose_request(user_prompt, dialogue, speaker, pronouns=None, custom_prompt=""):
     prompt = user_prompt
-    if pronouns and speaker and speaker != UNKNOWN_SPEAKER:
-        parts = []
-        if pronouns.get("rover_self"):
-            parts.append(f"[Rover-self: {pronouns['rover_self']}]")
-        if pronouns.get("rover_to_other"):
-            parts.append(f"[Rover-to-other: {pronouns['rover_to_other']}]")
-        if speaker != "Rover":
-            if pronouns.get("other_self"):
-                parts.append(f"[Other-self: {pronouns['other_self']}]")
-            if pronouns.get("other_to_rover"):
-                parts.append(f"[Other-to-Rover: {pronouns['other_to_rover']}]")
-        if parts:
-            prompt += "\n" + " ".join(parts)
+    if speaker and speaker != UNKNOWN_SPEAKER:
+        parts = [f"[Speaker: {speaker}]"]
+        if pronouns:
+            if pronouns.get("rover_self"):
+                parts.append(f"[Rover-self: {pronouns['rover_self']}]")
+            if pronouns.get("rover_to_other"):
+                parts.append(f"[Rover-to-other: {pronouns['rover_to_other']}]")
+            if speaker != "Rover":
+                if pronouns.get("other_self"):
+                    parts.append(f"[Other-self: {pronouns['other_self']}]")
+                if pronouns.get("other_to_rover"):
+                    parts.append(f"[Other-to-Rover: {pronouns['other_to_rover']}]")
+        prompt += "\n" + " ".join(parts)
     if custom_prompt and len(custom_prompt.strip()) > 4:
         prompt += "\nPrioritize this rule:\n" + custom_prompt
     prompt += "\n\nEnglish text:\n" + dialogue
