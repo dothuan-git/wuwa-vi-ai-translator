@@ -269,10 +269,10 @@ class TranslatorApp:
 
         # Current pronoun selections (updated by button clicks)
         cfg = read_json("config.json")
-        self._rover_self: str = cfg.get("rover_self", "tôi")
-        self._rover_to_other: str = cfg.get("rover_to_other", "bạn")
-        self._other_self: str = "tôi"
-        self._other_to_rover: str = "bạn"
+        self._rover_self: Optional[str] = cfg.get("rover_self") or None
+        self._rover_to_other: Optional[str] = cfg.get("rover_to_other") or None
+        self._other_self: Optional[str] = "tôi"
+        self._other_to_rover: Optional[str] = "bạn"
 
         # LRU translation cache
         self._cache: OrderedDict[str, str] = OrderedDict()
@@ -664,27 +664,27 @@ class TranslatorApp:
     # ── Pronoun button handlers ───────────────────────────────────────────────
 
     def _on_rover_self_click(self, pronoun: str) -> None:
-        self._rover_self = pronoun
-        self._refresh_pronoun_column(self._rover_self_btns, pronoun, self._rover_style_pair)
+        self._rover_self = None if self._rover_self == pronoun else pronoun
+        self._refresh_pronoun_column(self._rover_self_btns, self._rover_self, self._rover_style_pair)
         cfg = read_json("config.json")
-        cfg["rover_self"] = pronoun
+        cfg["rover_self"] = self._rover_self or ""
         write_json("config.json", cfg)
 
     def _on_rover_to_other_click(self, pronoun: str) -> None:
-        self._rover_to_other = pronoun
-        self._refresh_pronoun_column(self._rover_to_other_btns, pronoun, self._rover_style_pair)
+        self._rover_to_other = None if self._rover_to_other == pronoun else pronoun
+        self._refresh_pronoun_column(self._rover_to_other_btns, self._rover_to_other, self._rover_style_pair)
         cfg = read_json("config.json")
-        cfg["rover_to_other"] = pronoun
+        cfg["rover_to_other"] = self._rover_to_other or ""
         write_json("config.json", cfg)
 
     def _on_other_self_click(self, pronoun: str) -> None:
-        self._other_self = pronoun
-        self._refresh_pronoun_column(self._other_self_btns, pronoun, self._other_style_pair)
+        self._other_self = None if self._other_self == pronoun else pronoun
+        self._refresh_pronoun_column(self._other_self_btns, self._other_self, self._other_style_pair)
         self._save_other_pronouns()
 
     def _on_other_to_rover_click(self, pronoun: str) -> None:
-        self._other_to_rover = pronoun
-        self._refresh_pronoun_column(self._other_to_rover_btns, pronoun, self._other_style_pair)
+        self._other_to_rover = None if self._other_to_rover == pronoun else pronoun
+        self._refresh_pronoun_column(self._other_to_rover_btns, self._other_to_rover, self._other_style_pair)
         self._save_other_pronouns()
 
     def _save_other_pronouns(self) -> None:
@@ -695,8 +695,8 @@ class TranslatorApp:
             chars = {}
         if self.current_other_speaker not in chars:
             chars[self.current_other_speaker] = {}
-        chars[self.current_other_speaker]["self_pronoun"] = self._other_self
-        chars[self.current_other_speaker]["addressee_pronoun"] = self._other_to_rover
+        chars[self.current_other_speaker]["self_pronoun"] = self._other_self or ""
+        chars[self.current_other_speaker]["addressee_pronoun"] = self._other_to_rover or ""
         write_json("characters.json", chars)
 
     def _load_other_pronouns(self, speaker: str) -> Tuple[str, str]:
@@ -707,8 +707,8 @@ class TranslatorApp:
                 entry = chars[speaker]
                 if isinstance(entry, dict):
                     return (
-                        entry.get("self_pronoun", "tôi"),
-                        entry.get("addressee_pronoun", "bạn"),
+                        entry.get("self_pronoun", "tôi") or None,
+                        entry.get("addressee_pronoun", "bạn") or None,
                     )
         except Exception:
             pass
