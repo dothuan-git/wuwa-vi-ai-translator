@@ -6,7 +6,6 @@ from utils import (
     read_json,
     build_prompt,
     build_history_prompt,
-    build_glossary,
     UNKNOWN_SPEAKER,
 )
 from default_params import DEFAULT_CONFIG
@@ -37,66 +36,43 @@ def _speaker_of(item):
     return item[0] if len(item) == 3 else UNKNOWN_SPEAKER
 
 
-def _infer_addressee(prior_speakers, speaker):
-    """Likely addressee = the most recent prior speaker that differs from
-    `speaker` (skipping unknown). `prior_speakers` is chronological. Returns
-    UNKNOWN_SPEAKER when there is no dyad (no history, or narration)."""
-    if not speaker or speaker == UNKNOWN_SPEAKER:
-        return UNKNOWN_SPEAKER
-    for s in reversed(prior_speakers):
-        if s and s != UNKNOWN_SPEAKER and s != speaker:
-            return s
-    return UNKNOWN_SPEAKER
-
-
-def _build_messages(dialogue, speaker, history):
+def _build_messages(dialogue, speaker, history, pronouns=None):
     MAX_HISTORY = 3
     MAX_ENTRY_LEN = 600
 
     history = history or []
-    speakers = [_speaker_of(it) for it in history]
 
-    # Collect every named participant across history + current turn so the
-    # glossary is scoped to just the characters actually present.
-    participants = {s for s in speakers if s and s != UNKNOWN_SPEAKER}
-    if speaker and speaker != UNKNOWN_SPEAKER:
-        participants.add(speaker)
-
-    sys = system_prompt
-    glossary = build_glossary(filter_names=participants if participants else None)
-    if glossary:
-        sys = f"{sys}\n\n{glossary}"
-    messages = [{"role": "system", "content": sys}]
+    sys_msg = system_prompt
+    messages = [{"role": "system", "content": sys_msg}]
 
     if history:
         recent = history[-MAX_HISTORY:]
-        offset = len(history) - len(recent)
-        for idx, item in enumerate(recent):
-            # Accept (speaker, orig, trans) triples; tolerate legacy (orig, trans).
+        for item in recent:
             if len(item) == 3:
                 h_speaker, h_orig, h_trans = item
             else:
                 h_orig, h_trans = item
                 h_speaker = UNKNOWN_SPEAKER
-            h_addressee = _infer_addressee(speakers[: offset + idx], h_speaker)
             messages.append({
                 "role": "user",
                 "content": build_history_prompt(
-                    user_prompt, _clip(h_orig, MAX_ENTRY_LEN), h_speaker, h_addressee
+                    user_prompt, _clip(h_orig, MAX_ENTRY_LEN), h_speaker, pronouns
                 ),
             })
             messages.append({"role": "assistant", "content": _clip(h_trans, MAX_ENTRY_LEN)})
 
-    addressee = _infer_addressee(speakers, speaker)
     messages.append({
         "role": "user",
-        "content": build_prompt(user_prompt, dialogue, speaker, addressee),
+        "content": build_prompt(user_prompt, dialogue, speaker, pronouns),
     })
     return messages
 
 
-def translate_with_llama(dialogue, speaker="unknown", history=None, on_chunk=None):
-    """Translate dialogue via Groq API.
+def translate_with_llama(dialogue, speaker="unknown", history=None, on_chunk=None, pronouns=None):
+    """Translate dialogue via the configured AI provider.
+
+    pronouns: dict with keys rover_self, rover_to_other, and optionally
+    other_self, other_to_rover. None for narration (no pronoun tags injected).
 
     If on_chunk is provided, streams the response and calls on_chunk(partial_text)
     incrementally. Returns the final cleaned translation string.
@@ -110,7 +86,7 @@ def translate_with_llama(dialogue, speaker="unknown", history=None, on_chunk=Non
     api_key = config.get(f"{provider}_api_key", "")
     model = config.get(f"{provider}_model", DEFAULT_CONFIG[f"{provider}_model"])
 
-    messages = _build_messages(dialogue, speaker, history)
+    messages = _build_messages(dialogue, speaker, history, pronouns)
 
     headers = {
         "Authorization": f"Bearer {api_key}",
@@ -119,13 +95,11 @@ def translate_with_llama(dialogue, speaker="unknown", history=None, on_chunk=Non
     payload = {
         "model": model,
         "messages": messages,
-        "temperature": 0.6,
+        "temperature": 0.3,
         "stream": bool(on_chunk),
     }
     _m = model.lower()
     if "qwen" in _m or _m.startswith("gemini-2.5"):
-        # Disable the model's thinking pass — cuts latency/cost for live dialogue.
-        # (Qwen3, and Gemini 2.5 Flash/Flash-Lite via the OpenAI-compat layer.)
         payload["reasoning_effort"] = "none"
 
     try:
@@ -177,7 +151,6 @@ def _stream_translate(url, headers, payload, on_chunk):
                         continue
                     accumulated += delta
 
-                    # Track <think> blocks — don't display while inside them
                     visible = _compute_visible(accumulated)
                     on_chunk(visible)
                 except (json.JSONDecodeError, KeyError, IndexError):
@@ -191,7 +164,6 @@ def _stream_translate(url, headers, payload, on_chunk):
 def _compute_visible(text: str) -> str:
     """Return text with closed <think> blocks removed; hide unclosed ones."""
     text = _THINK_RE_CLOSED.sub('', text)
-    # If there's an unclosed <think>, hide everything from it onward
     think_start = text.find('<think>')
     if think_start != -1:
         text = text[:think_start]

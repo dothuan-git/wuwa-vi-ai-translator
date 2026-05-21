@@ -31,24 +31,30 @@ def write_json(file_path, data):
 
 
 def ensure_config():
-    """Write default config.json on first run; seed/update characters.json.
+    """Write default config.json on first run; initialise/migrate characters.json.
 
-    - Missing file: write DEFAULT_CHARACTERS.
-    - Empty dict: write DEFAULT_CHARACTERS.
-    - Non-empty dict: merge — add any DEFAULT_CHARACTERS keys not already
-      present (never overwrites user-customised entries, so custom pronouns
-      and deletions are respected for existing keys).
-    - Corrupt file: leave it for the user to fix.
+    characters.json new schema: {speaker_name: {self_pronoun, addressee_pronoun}}
+    Old schema (entries with 'gender' or 'role' fields) is backed up and replaced
+    with an empty dict so the new system starts fresh.
     """
-    from default_params import DEFAULT_CONFIG, DEFAULT_CHARACTERS
+    from default_params import DEFAULT_CONFIG
 
     config_path = get_appdata_file_path("config.json")
     if not os.path.exists(config_path):
         write_json("config.json", DEFAULT_CONFIG)
+    else:
+        # Migrate old rover_pronoun → rover_self if present
+        try:
+            cfg = read_json("config.json")
+            if "rover_pronoun" in cfg and "rover_self" not in cfg:
+                cfg["rover_self"] = cfg.pop("rover_pronoun")
+                write_json("config.json", cfg)
+        except Exception:
+            pass
 
     chars_path = get_appdata_file_path("characters.json")
     if not os.path.exists(chars_path):
-        write_json("characters.json", DEFAULT_CHARACTERS)
+        write_json("characters.json", {})
         return
 
     try:
@@ -59,14 +65,18 @@ def ensure_config():
     if not isinstance(existing, dict):
         return
 
-    if not existing:
-        write_json("characters.json", DEFAULT_CHARACTERS)
-    else:
-        new_entries = {k: v for k, v in DEFAULT_CHARACTERS.items()
-                       if k not in existing}
-        if new_entries:
-            existing.update(new_entries)
-            write_json("characters.json", existing)
+    # Detect old schema (any entry has 'gender' or 'role')
+    is_old_schema = any(
+        isinstance(v, dict) and ("gender" in v or "role" in v)
+        for v in existing.values()
+    )
+    if is_old_schema:
+        bak_path = get_appdata_file_path("characters.json.bak")
+        with open(get_appdata_file_path("characters.json"), "r", encoding="utf-8") as f:
+            bak_content = f.read()
+        with open(bak_path, "w", encoding="utf-8") as f:
+            f.write(bak_content)
+        write_json("characters.json", {})
 
 
 UNKNOWN_SPEAKER = "unknown"
@@ -92,8 +102,7 @@ def _looks_like_speaker(line):
 
 
 def _get_known_names():
-    """Return the set of character names from characters.json.
-    Called once per capture; the file is small so no caching needed."""
+    """Return the set of character names from characters.json."""
     try:
         chars = read_json("characters.json")
         return set(chars.keys()) if isinstance(chars, dict) else set()
@@ -131,87 +140,25 @@ def standardize_dialog(lines):
     return UNKNOWN_SPEAKER, _normalize(' '.join(parts)), _normalize(' '.join(parts))
 
 
-def _compose_request(user_prompt, dialogue, speaker, addressee=UNKNOWN_SPEAKER,
-                     custom_prompt=""):
+def _compose_request(user_prompt, dialogue, speaker, pronouns=None, custom_prompt=""):
     prompt = user_prompt
-    if speaker and speaker != UNKNOWN_SPEAKER:
-        prompt += f"\n[Speaker: {speaker}]"
-        # Addressee only makes sense relative to a known speaker.
-        if addressee and addressee != UNKNOWN_SPEAKER and addressee != speaker:
-            prompt += f"\n[Addressee: {addressee}]"
+    if pronouns and speaker and speaker != UNKNOWN_SPEAKER:
+        tags = f"[Rover-self: {pronouns['rover_self']}] [Rover-to-other: {pronouns['rover_to_other']}]"
+        if speaker != "Rover" and "other_self" in pronouns:
+            tags += f" [Other-self: {pronouns['other_self']}] [Other-to-Rover: {pronouns['other_to_rover']}]"
+        prompt += f"\n{tags}"
     if custom_prompt and len(custom_prompt.strip()) > 4:
         prompt += "\nPrioritize this rule:\n" + custom_prompt
     prompt += "\n\nEnglish text:\n" + dialogue
     return prompt
 
 
-def build_prompt(user_prompt, dialogue, speaker=UNKNOWN_SPEAKER,
-                 addressee=UNKNOWN_SPEAKER):
+def build_prompt(user_prompt, dialogue, speaker=UNKNOWN_SPEAKER, pronouns=None):
     """Live-turn user message: includes the user's custom rule."""
     custom_prompt = read_json("config.json").get("custom_prompt", "")
-    return _compose_request(user_prompt, dialogue, speaker, addressee,
-                            custom_prompt)
+    return _compose_request(user_prompt, dialogue, speaker, pronouns, custom_prompt)
 
 
-def build_history_prompt(user_prompt, dialogue, speaker=UNKNOWN_SPEAKER,
-                         addressee=UNKNOWN_SPEAKER):
-    """History user message: same structure as the live turn (so few-shot
-    examples match the real query) but without repeating the custom rule."""
-    return _compose_request(user_prompt, dialogue, speaker, addressee)
-
-
-_ROVER_PRONOUN_PAIRS = {
-    "tôi": "xưng 'tôi', gọi người kia là 'bạn'; cặp tôi–bạn (trung tính, lịch sự)",
-    "tớ": "xưng 'tớ', gọi người kia là 'cậu'; cặp tớ–cậu (trẻ trung, thân mật)",
-    "anh": "xưng 'anh', gọi người kia là 'em'; cặp anh–em (Rover vai anh/đàn anh)",
-    "ta": "xưng 'ta', gọi người kia là 'ngươi'; cặp ta–ngươi (cổ kính, thù địch)",
-}
-_ROVER_GENDER_VI = {"male": "nam", "female": "nữ"}
-
-
-def build_glossary(filter_names=None, max_entries=60):
-    """Build a character/term glossary block for the given participants.
-
-    filter_names: set of speaker/addressee names seen in the current turn +
-    history. Only entries whose key is in filter_names are included. Pass
-    None to include all (legacy behaviour). Returns "" when no entries match
-    so the section is omitted entirely from the prompt.
-    """
-    try:
-        characters = read_json("characters.json")
-    except Exception:
-        return ""
-    if not isinstance(characters, dict) or not characters:
-        return ""
-
-    # Override Rover's pronoun note from config so it always reflects the
-    # player's chosen pronoun, even if characters.json has a stale value.
-    if "Rover" in characters and isinstance(characters["Rover"], dict):
-        cfg = read_json("config.json")
-        rover_gender = cfg.get("rover_gender", "male")
-        rover_pronoun = cfg.get("rover_pronoun", "tôi")
-        rover_entry = dict(characters["Rover"])
-        rover_entry["gender"] = _ROVER_GENDER_VI.get(rover_gender, "nam")
-        rover_entry["pronoun"] = _ROVER_PRONOUN_PAIRS.get(rover_pronoun, _ROVER_PRONOUN_PAIRS["tôi"])
-        characters = dict(characters)
-        characters["Rover"] = rover_entry
-
-    if filter_names is not None:
-        characters = {k: v for k, v in characters.items() if k in filter_names}
-
-    if not characters:
-        return ""
-
-    entries = []
-    for name, value in list(characters.items())[:max_entries]:
-        if isinstance(value, dict):
-            note = ", ".join(f"{k}: {v}" for k, v in value.items() if v)
-        else:
-            note = str(value).strip()
-        entries.append(f"- {name}: {note}" if note else f"- {name}")
-
-    return (
-        "CHARACTER GLOSSARY (translate these names/terms consistently; "
-        "use the given Vietnamese pronouns where provided):\n"
-        + "\n".join(entries)
-    )
+def build_history_prompt(user_prompt, dialogue, speaker=UNKNOWN_SPEAKER, pronouns=None):
+    """History user message: same structure as the live turn but without the custom rule."""
+    return _compose_request(user_prompt, dialogue, speaker, pronouns)

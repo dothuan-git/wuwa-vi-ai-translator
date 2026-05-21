@@ -46,7 +46,7 @@ def _toggle_show(entry, btn):
         btn.config(text="🙈")
 
 
-def open_settings_window(master, on_hotkey_change=None, on_font_change=None):
+def open_settings_window(master, on_hotkey_change=None, on_font_change=None, on_close=None):
     window = tk.Toplevel(master)
     window.title("Settings")
     window.attributes('-topmost', True)
@@ -67,8 +67,6 @@ def open_settings_window(master, on_hotkey_change=None, on_font_change=None):
     ocr_engine_var = tk.StringVar(value=config.get("ocr_engine", DEFAULT_CONFIG["ocr_engine"]))
     hotkey_var = tk.StringVar(value=config.get("hotkey", DEFAULT_CONFIG["hotkey"]))
     font_size_var = tk.IntVar(value=config.get("font_size", DEFAULT_CONFIG["font_size"]))
-    rover_gender_var = tk.StringVar(value=config.get("rover_gender", DEFAULT_CONFIG["rover_gender"]))
-
     frm = tk.Frame(window, bg=WINDOW_BG)
     frm.pack(fill='both', expand=True, padx=10, pady=10)
     frm.columnconfigure(0, weight=1)
@@ -166,15 +164,6 @@ def open_settings_window(master, on_hotkey_change=None, on_font_change=None):
                 state="readonly").grid(row=row, column=0, sticky='w', pady=(0, 8))
     row += 1
 
-    # Rover gender
-    tk.Label(frm, text="Rover Gender:", bg=LABEL_BG, fg=LABEL_FG).grid(row=row, column=0, sticky='w')
-    row += 1
-    rover_gender_frame = tk.Frame(frm, bg=WINDOW_BG)
-    rover_gender_frame.grid(row=row, column=0, sticky='w', pady=(0, 8))
-    ttk.Radiobutton(rover_gender_frame, text="Male", variable=rover_gender_var, value="male").pack(side='left', padx=(0, 12))
-    ttk.Radiobutton(rover_gender_frame, text="Female", variable=rover_gender_var, value="female").pack(side='left')
-    row += 1
-
     def save_settings():
         new_hotkey = hotkey_var.get().strip()
         provider = provider_var.get()
@@ -186,7 +175,6 @@ def open_settings_window(master, on_hotkey_change=None, on_font_change=None):
         config["ocr_engine"] = ocr_engine_var.get()
         config["hotkey"] = new_hotkey
         config["font_size"] = font_size_var.get()
-        config["rover_gender"] = rover_gender_var.get()
         config["settings_geometry"] = window.winfo_geometry()
         write_json("config.json", config)
 
@@ -197,6 +185,8 @@ def open_settings_window(master, on_hotkey_change=None, on_font_change=None):
 
         messagebox.showinfo("Success", "Settings saved!")
         window.destroy()
+        if on_close:
+            on_close()
 
     btn_frm = tk.Frame(window, bg=WINDOW_BG)
     btn_frm.pack(fill='x', side='bottom', pady=(0, 8), padx=10)
@@ -228,5 +218,7 @@ def open_settings_window(master, on_hotkey_change=None, on_font_change=None):
         except Exception:
             pass
         window.destroy()
+        if on_close:
+            on_close()
 
     window.protocol("WM_DELETE_WINDOW", _on_window_close)

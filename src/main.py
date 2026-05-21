@@ -24,7 +24,13 @@ from settings_window import open_settings_window
 from ocr import extract_text
 from translators import translate_with_llama
 from utils import standardize_dialog, ensure_config, read_json, write_json
-from default_params import DEFAULT_CONFIG
+from default_params import (
+    DEFAULT_CONFIG,
+    ROVER_SELF_OPTIONS,
+    ROVER_TO_OTHER_OPTIONS,
+    OTHER_SELF_OPTIONS,
+    OTHER_TO_ROVER_OPTIONS,
+)
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -36,8 +42,8 @@ WS_EX_TRANSPARENT = 0x00000020
 
 
 class AppConstants:
-    MAIN_WIDTH_RATIO = 0.5
-    MAIN_HEIGHT_RATIO = 0.2
+    MAIN_WIDTH_RATIO = 0.55
+    MAIN_HEIGHT_RATIO = 0.32
     REGION_WIDTH_RATIO = 0.42
     REGION_HEIGHT_RATIO = 0.12
     MIN_REGION_SIZE = 50
@@ -46,6 +52,9 @@ class AppConstants:
     DEFAULT_FONT_FAMILY = "Arial"
     DEFAULT_FONT_SIZE = 16
     BUTTON_FONT = ("Helvetica", 10, "bold")
+    PRONOUN_FONT = ("Helvetica", 9, "bold")
+    HEADER_FONT = ("Helvetica", 9, "bold")
+    SUB_HEADER_FONT = ("Helvetica", 8)
 
     SELECTOR_BG_COLOR = "#C4E1E6"
     SELECTOR_BORDER_COLOR = "#0065F8"
@@ -56,8 +65,15 @@ class AppConstants:
     SETTINGS_BG_COLOR = "#333446"
     SETTINGS_FG_COLOR = "#F5F5F5"
 
+    ROVER_BAR_BG = "#EAF4FB"      # light blue tint for Rover (player)
+    ROVER_BAR_ACCENT = "#1D5D9B"
+    OTHER_BAR_BG = "#FBEEE6"      # light warm tint for Other (NPC)
+    OTHER_BAR_ACCENT = "#A04000"
+    SUB_LABEL_FG = "#555"
+
     NO_TEXT_DETECTED = "Không phát hiện văn bản."
     UNKNOWN_SPEAKER = "unknown"
+    NO_SPEAKER_LABEL = "Đối phương"
 
     TRANSLATION_CACHE_SIZE = 200
     AUTO_POLL_INTERVAL = 0.7   # seconds
@@ -96,7 +112,6 @@ class RegionSelector:
 
         self._create_selector_window()
         self._bind_events()
-        # Resolve the window handle once mapped; start editable (unlocked)
         self.parent.after(200, self._apply_click_through)
 
     def _create_selector_window(self) -> None:
@@ -124,7 +139,6 @@ class RegionSelector:
         self.canvas.bind("<Motion>", self._update_cursor)
 
     def _apply_click_through(self) -> None:
-        """Resolve the window handle; enable click-through only when locked."""
         try:
             self.selector.update_idletasks()
             hwnd = ctypes.windll.user32.GetParent(self.selector.winfo_id())
@@ -132,17 +146,14 @@ class RegionSelector:
                 hwnd = self.selector.winfo_id()
             self._hwnd = hwnd
             if not self._edit_mode:
-                # Make fill transparent so only the border shows
                 self.selector.attributes("-transparentcolor", AppConstants.SELECTOR_BG_COLOR)
                 _set_click_through(hwnd, True)
         except Exception as e:
             logger.warning(f"Click-through setup failed: {e}")
 
     def toggle_edit_mode(self) -> bool:
-        """Toggle between edit (draggable) and idle (click-through) mode. Returns new state."""
         self._edit_mode = not self._edit_mode
         if self._edit_mode:
-            # Restore fill so the box is visible and interactive
             try:
                 self.selector.attributes("-transparentcolor", "")
             except Exception:
@@ -254,6 +265,14 @@ class TranslatorApp:
         self.translation_history: List[Tuple[str, str, str]] = []
         self._job_in_flight = False
         self._last_speaker = AppConstants.UNKNOWN_SPEAKER
+        self.current_other_speaker: Optional[str] = None
+
+        # Current pronoun selections (updated by button clicks)
+        cfg = read_json("config.json")
+        self._rover_self: str = cfg.get("rover_self", "tôi")
+        self._rover_to_other: str = cfg.get("rover_to_other", "bạn")
+        self._other_self: str = "tôi"
+        self._other_to_rover: str = "bạn"
 
         # LRU translation cache
         self._cache: OrderedDict[str, str] = OrderedDict()
@@ -312,9 +331,16 @@ class TranslatorApp:
                 "height": int(screen_h * AppConstants.REGION_HEIGHT_RATIO),
             }
 
-        self.root.grid_rowconfigure(0, weight=1)
-        self.root.grid_columnconfigure(0, weight=1)
-        self.root.grid_columnconfigure(1, weight=0)
+        # row 0: top button row (Re-translate+Auto | [text] | Translate+Lock Region)
+        # row 1: main content (Rover bar | translated text | other bar), weight=1
+        # row 2: original text toggle
+        # row 3: status bar
+        # uniform="bars" keeps cols 0 and 2 at the same width.
+        self.root.grid_rowconfigure(0, weight=0)
+        self.root.grid_rowconfigure(1, weight=1)
+        self.root.grid_columnconfigure(0, weight=0, uniform="bars")
+        self.root.grid_columnconfigure(1, weight=1)
+        self.root.grid_columnconfigure(2, weight=0, uniform="bars")
         self.root.grid_propagate(False)
 
         font_size = cfg.get("font_size", AppConstants.DEFAULT_FONT_SIZE)
@@ -340,33 +366,65 @@ class TranslatorApp:
             background=[("active", AppConstants.BUTTON_ACTIVE_BG), ("pressed", "#90D7DC")],
             foreground=[("active", AppConstants.BUTTON_ACTIVE_FG)]
         )
+
+        # Rover (left bar) — cool blue palette
         self.style.configure(
-            "Pronoun.TButton",
-            font=AppConstants.BUTTON_FONT,
-            background="#FFA040",
-            foreground="#6B2800",
-            padding=4,
-            borderwidth=2,
-            relief="flat"
+            "RoverPronoun.TButton",
+            font=AppConstants.PRONOUN_FONT,
+            background="#D6E9F5",
+            foreground="#1D5D9B",
+            padding=(2, 1),
+            borderwidth=1,
+            relief="flat",
         )
         self.style.map(
-            "Pronoun.TButton",
-            background=[("active", "#E56B00"), ("pressed", "#CC5500")],
-            foreground=[("active", "#FFFFFF")]
+            "RoverPronoun.TButton",
+            background=[("active", "#B4D4EB"), ("pressed", "#A0C8E2")],
+            foreground=[("active", "#0E3A66")],
         )
         self.style.configure(
-            "ActivePronoun.TButton",
-            font=AppConstants.BUTTON_FONT,
-            background="#E56B00",
+            "RoverPronounActive.TButton",
+            font=AppConstants.PRONOUN_FONT,
+            background="#1D5D9B",
             foreground="#FFFFFF",
-            padding=4,
-            borderwidth=2,
-            relief="flat"
+            padding=(2, 1),
+            borderwidth=1,
+            relief="flat",
         )
         self.style.map(
-            "ActivePronoun.TButton",
-            background=[("active", "#CC5500"), ("pressed", "#B34700")],
-            foreground=[("active", "#FFFFFF")]
+            "RoverPronounActive.TButton",
+            background=[("active", "#164773"), ("pressed", "#0E3A66")],
+            foreground=[("active", "#FFFFFF")],
+        )
+
+        # Other (right bar) — warm amber palette
+        self.style.configure(
+            "OtherPronoun.TButton",
+            font=AppConstants.PRONOUN_FONT,
+            background="#F7D7BC",
+            foreground="#6B2800",
+            padding=(2, 1),
+            borderwidth=1,
+            relief="flat",
+        )
+        self.style.map(
+            "OtherPronoun.TButton",
+            background=[("active", "#F0B988"), ("pressed", "#E89F60")],
+            foreground=[("active", "#3D1500")],
+        )
+        self.style.configure(
+            "OtherPronounActive.TButton",
+            font=AppConstants.PRONOUN_FONT,
+            background="#C75B16",
+            foreground="#FFFFFF",
+            padding=(2, 1),
+            borderwidth=1,
+            relief="flat",
+        )
+        self.style.map(
+            "OtherPronounActive.TButton",
+            background=[("active", "#A04000"), ("pressed", "#7A3000")],
+            foreground=[("active", "#FFFFFF")],
         )
 
     def _create_region_selector(self) -> None:
@@ -375,68 +433,183 @@ class TranslatorApp:
     # ── UI components ─────────────────────────────────────────────────────────
 
     def _create_ui_components(self) -> None:
-        self._create_button_frame()
+        self._create_top_buttons()
+        self._create_rover_pronoun_bar()
+        self._create_right_panel()
         self._create_text_areas()
         self._create_status_bar()
         self._create_settings_button()
 
-    def _create_button_frame(self) -> None:
-        self.button_frame = tk.Frame(self.root)
-        self.button_frame.grid(row=0, column=1, rowspan=3, sticky="ns", padx=5, pady=5)
-        # 4 equal columns: existing buttons span 2 each; pronoun buttons span 1 each
-        for col in range(4):
-            self.button_frame.grid_columnconfigure(col, weight=1)
-
-        self.translate_btn = ttk.Button(
-            self.button_frame,
-            text="Translate",
-            command=self._trigger_translate,
-            style="Translate.TButton"
-        )
-        self.translate_btn.grid(row=0, column=0, columnspan=2, sticky="ew", padx=2, pady=2)
+    def _create_top_buttons(self) -> None:
+        """Row 0 button strip: Re-translate+Auto (col 0), Translate+Lock Region (col 2)."""
+        left = tk.Frame(self.root)
+        left.grid(row=0, column=0, sticky="ew", padx=(4, 0), pady=(5, 2))
+        left.grid_columnconfigure(0, weight=1, uniform="ltop")
+        left.grid_columnconfigure(1, weight=1, uniform="ltop")
 
         self.retranslate_btn = ttk.Button(
-            self.button_frame,
-            text="Re-translate",
-            command=self.translate_original_text,
-            style="Translate.TButton"
+            left, text="Re-translate",
+            command=self.translate_original_text, style="Translate.TButton"
         )
-        self.retranslate_btn.grid(row=0, column=2, columnspan=2, sticky="ew", padx=2, pady=2)
+        self.retranslate_btn.grid(row=0, column=0, sticky="ew", padx=(0, 1))
 
         self.auto_btn = ttk.Button(
-            self.button_frame,
-            text="Auto: Off",
-            command=self.toggle_auto_detect,
-            style="Translate.TButton"
+            left, text="Auto: Off",
+            command=self.toggle_auto_detect, style="Translate.TButton"
         )
-        self.auto_btn.grid(row=1, column=0, columnspan=2, sticky="ew", padx=2, pady=2)
+        self.auto_btn.grid(row=0, column=1, sticky="ew", padx=(1, 0))
+
+        right = tk.Frame(self.root)
+        right.grid(row=0, column=2, sticky="ew", padx=5, pady=(5, 2))
+        right.grid_columnconfigure(0, weight=1, uniform="rtop")
+        right.grid_columnconfigure(1, weight=1, uniform="rtop")
+
+        self.translate_btn = ttk.Button(
+            right, text="Translate",
+            command=self._trigger_translate, style="Translate.TButton"
+        )
+        self.translate_btn.grid(row=0, column=0, sticky="ew", padx=(0, 1))
 
         self.edit_region_btn = ttk.Button(
-            self.button_frame,
-            text="Lock Region",
-            command=self.toggle_edit_region,
-            style="Translate.TButton"
+            right, text="Lock Region",
+            command=self.toggle_edit_region, style="Translate.TButton"
         )
-        self.edit_region_btn.grid(row=1, column=2, columnspan=2, sticky="ew", padx=2, pady=2)
+        self.edit_region_btn.grid(row=0, column=1, sticky="ew", padx=(1, 0))
 
-        # Pronoun buttons: 4 half-width buttons in one row
-        self._pronoun_btns: dict = {}
-        _PRONOUN_OPTIONS = ["tôi", "tớ", "anh", "ta"]
-        saved_pronoun = read_json("config.json").get("rover_pronoun", "tôi")
-        for i, pronoun in enumerate(_PRONOUN_OPTIONS):
+    def _create_right_panel(self) -> None:
+        """Column 2, row 1+: other-pronoun bar."""
+        self.right_panel = tk.Frame(self.root)
+        self.right_panel.grid(row=1, column=2, rowspan=2, sticky="nsew", padx=5, pady=5)
+        self._create_other_pronoun_bar()
+
+    def _make_pronoun_column(self, parent, options, active, on_click, col, style_pair, start_row=0):
+        """Build a single-select column of pronoun buttons in `parent` at grid column `col`.
+        style_pair is (base_style, active_style). Returns {option: button}."""
+        btns = {}
+        for i, opt in enumerate(options):
             btn = ttk.Button(
-                self.button_frame,
-                text=pronoun,
-                command=lambda p=pronoun: self._select_rover_pronoun(p),
-                style="Pronoun.TButton"
+                parent,
+                text=opt,
+                style=style_pair[0],
+                command=lambda o=opt: on_click(o),
+                width=6,
             )
-            btn.grid(row=2, column=i, sticky="ew", padx=2, pady=2)
-            self._pronoun_btns[pronoun] = btn
-        self._update_pronoun_buttons(saved_pronoun)
+            btn.grid(row=start_row + i, column=col, sticky="ew", padx=1, pady=1)
+            btns[opt] = btn
+        self._refresh_pronoun_column(btns, active, style_pair)
+        return btns
+
+    def _refresh_pronoun_column(self, btns: dict, active: str, style_pair) -> None:
+        base, active_style = style_pair
+        for opt, btn in btns.items():
+            btn.configure(style=active_style if opt == active else base)
+
+    def _create_rover_pronoun_bar(self) -> None:
+        """Column 0: two sub-columns — Rover self-pronoun and Rover→other pronoun."""
+        self._rover_style_pair = ("RoverPronoun.TButton", "RoverPronounActive.TButton")
+
+        self.rover_pronoun_frame = tk.Frame(
+            self.root,
+            bg=AppConstants.ROVER_BAR_BG,
+            highlightthickness=1,
+            highlightbackground="#B4D4EB",
+        )
+        self.rover_pronoun_frame.grid(row=1, column=0, rowspan=2, sticky="nsew",
+                                      padx=(4, 0), pady=5)
+        self.rover_pronoun_frame.grid_columnconfigure(0, weight=1, uniform="rover")
+        self.rover_pronoun_frame.grid_columnconfigure(1, weight=1, uniform="rover")
+
+        tk.Label(
+            self.rover_pronoun_frame, text="Rover",
+            bg=AppConstants.ROVER_BAR_BG, fg=AppConstants.ROVER_BAR_ACCENT,
+            font=AppConstants.HEADER_FONT,
+        ).grid(row=0, column=0, columnspan=2, sticky="ew", padx=2, pady=(3, 1))
+
+        tk.Label(
+            self.rover_pronoun_frame, text="xưng",
+            bg=AppConstants.ROVER_BAR_BG, fg=AppConstants.SUB_LABEL_FG,
+            font=AppConstants.SUB_HEADER_FONT,
+        ).grid(row=1, column=0, sticky="ew", padx=1)
+        tk.Label(
+            self.rover_pronoun_frame, text="gọi",
+            bg=AppConstants.ROVER_BAR_BG, fg=AppConstants.SUB_LABEL_FG,
+            font=AppConstants.SUB_HEADER_FONT,
+        ).grid(row=1, column=1, sticky="ew", padx=1)
+
+        self._rover_self_btns = self._make_pronoun_column(
+            self.rover_pronoun_frame,
+            ROVER_SELF_OPTIONS,
+            self._rover_self,
+            self._on_rover_self_click,
+            col=0,
+            style_pair=self._rover_style_pair,
+            start_row=2,
+        )
+        self._rover_to_other_btns = self._make_pronoun_column(
+            self.rover_pronoun_frame,
+            ROVER_TO_OTHER_OPTIONS,
+            self._rover_to_other,
+            self._on_rover_to_other_click,
+            col=1,
+            style_pair=self._rover_style_pair,
+            start_row=2,
+        )
+
+    def _create_other_pronoun_bar(self) -> None:
+        """Below the action buttons in right_panel: two sub-columns for the
+        other speaker's pronouns."""
+        self._other_style_pair = ("OtherPronoun.TButton", "OtherPronounActive.TButton")
+
+        self.other_pronoun_frame = tk.Frame(
+            self.right_panel,
+            bg=AppConstants.OTHER_BAR_BG,
+            highlightthickness=1,
+            highlightbackground="#F0B988",
+        )
+        self.other_pronoun_frame.pack(side="top", fill="x")
+        self.other_pronoun_frame.grid_columnconfigure(0, weight=1, uniform="other")
+        self.other_pronoun_frame.grid_columnconfigure(1, weight=1, uniform="other")
+
+        self._other_header_var = tk.StringVar(value=AppConstants.NO_SPEAKER_LABEL)
+        tk.Label(
+            self.other_pronoun_frame, textvariable=self._other_header_var,
+            bg=AppConstants.OTHER_BAR_BG, fg=AppConstants.OTHER_BAR_ACCENT,
+            font=AppConstants.HEADER_FONT,
+        ).grid(row=0, column=0, columnspan=2, sticky="ew", padx=2, pady=(3, 1))
+
+        tk.Label(
+            self.other_pronoun_frame, text="xưng",
+            bg=AppConstants.OTHER_BAR_BG, fg=AppConstants.SUB_LABEL_FG,
+            font=AppConstants.SUB_HEADER_FONT,
+        ).grid(row=1, column=0, sticky="ew", padx=1)
+        tk.Label(
+            self.other_pronoun_frame, text="gọi",
+            bg=AppConstants.OTHER_BAR_BG, fg=AppConstants.SUB_LABEL_FG,
+            font=AppConstants.SUB_HEADER_FONT,
+        ).grid(row=1, column=1, sticky="ew", padx=1)
+
+        self._other_self_btns = self._make_pronoun_column(
+            self.other_pronoun_frame,
+            OTHER_SELF_OPTIONS,
+            self._other_self,
+            self._on_other_self_click,
+            col=0,
+            style_pair=self._other_style_pair,
+            start_row=2,
+        )
+        self._other_to_rover_btns = self._make_pronoun_column(
+            self.other_pronoun_frame,
+            OTHER_TO_ROVER_OPTIONS,
+            self._other_to_rover,
+            self._on_other_to_rover_click,
+            col=1,
+            style_pair=self._other_style_pair,
+            start_row=2,
+        )
 
     def _create_text_areas(self) -> None:
         self.original_frame = tk.Frame(self.root)
-        self.original_frame.grid(row=1, column=0, sticky="nsew", padx=5, pady=5)
+        self.original_frame.grid(row=2, column=1, sticky="nsew", padx=5, pady=5)
         self.original_frame.grid_remove()
 
         self.text_area = tk.Text(
@@ -456,7 +629,7 @@ class TranslatorApp:
             padx=30, pady=10,
             spacing2=3, spacing3=10
         )
-        self.translated_text_area.grid(row=0, column=0, sticky="nsew", padx=5, pady=2)
+        self.translated_text_area.grid(row=0, column=1, rowspan=2, sticky="nsew", padx=5, pady=2)
         self.translated_text_area.tag_configure("center", justify="center")
 
     def _create_status_bar(self) -> None:
@@ -469,7 +642,7 @@ class TranslatorApp:
             anchor="w",
             padx=6
         )
-        self.status_label.grid(row=2, column=0, sticky="ew")
+        self.status_label.grid(row=3, column=0, columnspan=3, sticky="ew")
 
     def _create_settings_button(self) -> None:
         self.settings_btn = tk.Button(
@@ -482,10 +655,85 @@ class TranslatorApp:
             command=lambda: open_settings_window(
                 self.root,
                 on_hotkey_change=self._register_hotkey,
-                on_font_change=self._apply_font_size
+                on_font_change=self._apply_font_size,
+                on_close=self._restore_styles,
             )
         )
         self.settings_btn.place(relx=1.0, rely=1.0, x=-10, y=-10, anchor="se")
+
+    # ── Pronoun button handlers ───────────────────────────────────────────────
+
+    def _on_rover_self_click(self, pronoun: str) -> None:
+        self._rover_self = pronoun
+        self._refresh_pronoun_column(self._rover_self_btns, pronoun, self._rover_style_pair)
+        cfg = read_json("config.json")
+        cfg["rover_self"] = pronoun
+        write_json("config.json", cfg)
+
+    def _on_rover_to_other_click(self, pronoun: str) -> None:
+        self._rover_to_other = pronoun
+        self._refresh_pronoun_column(self._rover_to_other_btns, pronoun, self._rover_style_pair)
+        cfg = read_json("config.json")
+        cfg["rover_to_other"] = pronoun
+        write_json("config.json", cfg)
+
+    def _on_other_self_click(self, pronoun: str) -> None:
+        self._other_self = pronoun
+        self._refresh_pronoun_column(self._other_self_btns, pronoun, self._other_style_pair)
+        self._save_other_pronouns()
+
+    def _on_other_to_rover_click(self, pronoun: str) -> None:
+        self._other_to_rover = pronoun
+        self._refresh_pronoun_column(self._other_to_rover_btns, pronoun, self._other_style_pair)
+        self._save_other_pronouns()
+
+    def _save_other_pronouns(self) -> None:
+        if not self.current_other_speaker:
+            return
+        chars = read_json("characters.json")
+        if not isinstance(chars, dict):
+            chars = {}
+        if self.current_other_speaker not in chars:
+            chars[self.current_other_speaker] = {}
+        chars[self.current_other_speaker]["self_pronoun"] = self._other_self
+        chars[self.current_other_speaker]["addressee_pronoun"] = self._other_to_rover
+        write_json("characters.json", chars)
+
+    def _load_other_pronouns(self, speaker: str) -> Tuple[str, str]:
+        """Return (self_pronoun, addressee_pronoun) for speaker; defaults if unknown."""
+        try:
+            chars = read_json("characters.json")
+            if isinstance(chars, dict) and speaker in chars:
+                entry = chars[speaker]
+                if isinstance(entry, dict):
+                    return (
+                        entry.get("self_pronoun", "tôi"),
+                        entry.get("addressee_pronoun", "bạn"),
+                    )
+        except Exception:
+            pass
+        return "tôi", "bạn"
+
+    def _update_other_bar(self, speaker: str) -> None:
+        """Switch the right pronoun bar to reflect the given speaker."""
+        self.current_other_speaker = speaker
+        self._other_self, self._other_to_rover = self._load_other_pronouns(speaker)
+        self._refresh_pronoun_column(self._other_self_btns, self._other_self, self._other_style_pair)
+        self._refresh_pronoun_column(self._other_to_rover_btns, self._other_to_rover, self._other_style_pair)
+        self._other_header_var.set(speaker or AppConstants.NO_SPEAKER_LABEL)
+
+    def _get_current_pronouns(self, speaker: str) -> Optional[dict]:
+        """Build the pronouns dict to pass to the translator. Returns None for narration."""
+        if not speaker or speaker == AppConstants.UNKNOWN_SPEAKER:
+            return None
+        pronouns = {
+            "rover_self": self._rover_self,
+            "rover_to_other": self._rover_to_other,
+        }
+        if speaker != "Rover":
+            pronouns["other_self"] = self._other_self
+            pronouns["other_to_rover"] = self._other_to_rover
+        return pronouns
 
     # ── Hotkey ────────────────────────────────────────────────────────────────
 
@@ -556,18 +804,6 @@ class TranslatorApp:
         editing = self.region_selector.toggle_edit_mode()
         self.edit_region_btn.config(text="Lock Region" if editing else "Edit Region")
 
-    # ── Rover pronoun ─────────────────────────────────────────────────────────
-
-    def _select_rover_pronoun(self, pronoun: str) -> None:
-        cfg = read_json("config.json")
-        cfg["rover_pronoun"] = pronoun
-        write_json("config.json", cfg)
-        self._update_pronoun_buttons(pronoun)
-
-    def _update_pronoun_buttons(self, active: str) -> None:
-        for pronoun, btn in self._pronoun_btns.items():
-            btn.configure(style="ActivePronoun.TButton" if pronoun == active else "Pronoun.TButton")
-
     # ── Translation pipeline ──────────────────────────────────────────────────
 
     def _trigger_translate(self) -> None:
@@ -599,6 +835,12 @@ class TranslatorApp:
                 dialog = ""
                 raw = ""
 
+            # Update other-speaker bar on main thread when speaker changes
+            if (speaker != AppConstants.UNKNOWN_SPEAKER
+                    and speaker != "Rover"
+                    and speaker != self.current_other_speaker):
+                self.root.after(0, lambda s=speaker: self._update_other_bar(s))
+
             if not dialog.strip():
                 self.root.after(0, lambda: self._finish_translate(
                     raw, AppConstants.NO_TEXT_DETECTED, speaker
@@ -615,11 +857,14 @@ class TranslatorApp:
 
             self.root.after(0, lambda: self._set_status("Translating…"))
             recent_history = self.translation_history[-5:]
+            pronouns = self._get_current_pronouns(speaker)
 
             def on_chunk(partial: str) -> None:
                 self.root.after(0, lambda p=partial: self._update_translated_display(p))
 
-            translated = translate_with_llama(dialog, speaker, recent_history, on_chunk=on_chunk)
+            translated = translate_with_llama(
+                dialog, speaker, recent_history, on_chunk=on_chunk, pronouns=pronouns
+            )
 
             # Update cache
             self._cache[cache_key] = translated
@@ -664,12 +909,14 @@ class TranslatorApp:
         def worker():
             try:
                 recent_history = self.translation_history[-5:]
+                pronouns = self._get_current_pronouns(self._last_speaker)
 
                 def on_chunk(partial: str) -> None:
                     self.root.after(0, lambda p=partial: self._update_translated_display(p))
 
                 translated = translate_with_llama(
-                    dialog, self._last_speaker, recent_history, on_chunk=on_chunk
+                    dialog, self._last_speaker, recent_history,
+                    on_chunk=on_chunk, pronouns=pronouns
                 )
                 self.root.after(0, lambda: self._finish_translate(dialog, translated, self._last_speaker))
             except Exception as e:
@@ -690,6 +937,14 @@ class TranslatorApp:
 
     def _apply_font_size(self, size) -> None:
         self.default_font.configure(size=int(size))
+
+    def _restore_styles(self) -> None:
+        """Re-apply custom ttk styles after the settings window resets the theme."""
+        self._setup_styles()
+        self._refresh_pronoun_column(self._rover_self_btns, self._rover_self, self._rover_style_pair)
+        self._refresh_pronoun_column(self._rover_to_other_btns, self._rover_to_other, self._rover_style_pair)
+        self._refresh_pronoun_column(self._other_self_btns, self._other_self, self._other_style_pair)
+        self._refresh_pronoun_column(self._other_to_rover_btns, self._other_to_rover, self._other_style_pair)
 
     def _update_text_areas(self, original_text: str, translated_text: str) -> None:
         self.text_area.delete(1.0, tk.END)
