@@ -43,11 +43,22 @@ def ensure_config():
     if not os.path.exists(config_path):
         write_json("config.json", DEFAULT_CONFIG)
     else:
-        # Migrate old rover_pronoun → rover_self if present
         try:
             cfg = read_json("config.json")
+            dirty = False
+            # Migrate old rover_pronoun → rover_self if present
             if "rover_pronoun" in cfg and "rover_self" not in cfg:
                 cfg["rover_self"] = cfg.pop("rover_pronoun")
+                dirty = True
+            # Migrate legacy custom_prompt → custom_prompt_rover + custom_prompt_npc
+            if "custom_prompt" in cfg:
+                legacy = cfg.pop("custom_prompt")
+                if legacy and not cfg.get("custom_prompt_rover"):
+                    cfg["custom_prompt_rover"] = legacy
+                if legacy and not cfg.get("custom_prompt_npc"):
+                    cfg["custom_prompt_npc"] = legacy
+                dirty = True
+            if dirty:
                 write_json("config.json", cfg)
         except Exception:
             pass
@@ -145,15 +156,18 @@ def _compose_request(user_prompt, dialogue, speaker, pronouns=None, custom_promp
     if speaker and speaker != UNKNOWN_SPEAKER:
         parts = [f"[Speaker: {speaker}]"]
         if pronouns:
-            if pronouns.get("rover_self"):
-                parts.append(f"[Rover-self: {pronouns['rover_self']}]")
-            if pronouns.get("rover_to_other"):
-                parts.append(f"[Rover-to-other: {pronouns['rover_to_other']}]")
-            if speaker != "Rover":
+            if speaker == "Rover":
+                # other_name = the most recently seen NPC; "listener" if none yet.
+                other_name = pronouns.get("other_name") or "listener"
+                if pronouns.get("rover_self"):
+                    parts.append(f"[Rover-self: {pronouns['rover_self']}]")
+                if pronouns.get("rover_to_other"):
+                    parts.append(f"[Rover-to-{other_name}: {pronouns['rover_to_other']}]")
+            else:
                 if pronouns.get("other_self"):
-                    parts.append(f"[Other-self: {pronouns['other_self']}]")
-                if pronouns.get("other_to_rover"):
-                    parts.append(f"[Other-to-Rover: {pronouns['other_to_rover']}]")
+                    parts.append(f"[{speaker}-self: {pronouns['other_self']}]")
+                if pronouns.get("other_to_listener"):
+                    parts.append(f"[{speaker}-to-Rover: {pronouns['other_to_listener']}]")
         prompt += "\n" + " ".join(parts)
     if custom_prompt and len(custom_prompt.strip()) > 4:
         prompt += "\nPrioritize this rule:\n" + custom_prompt
@@ -162,11 +176,12 @@ def _compose_request(user_prompt, dialogue, speaker, pronouns=None, custom_promp
 
 
 def build_prompt(user_prompt, dialogue, speaker=UNKNOWN_SPEAKER, pronouns=None):
-    """Live-turn user message: includes the user's custom rule."""
-    custom_prompt = read_json("config.json").get("custom_prompt", "")
+    """Live-turn user message: includes the user's custom rule for this speaker type."""
+    cfg = read_json("config.json")
+    if speaker == "Rover":
+        custom_prompt = cfg.get("custom_prompt_rover", "")
+    elif speaker and speaker != UNKNOWN_SPEAKER:
+        custom_prompt = cfg.get("custom_prompt_npc", "")
+    else:
+        custom_prompt = ""
     return _compose_request(user_prompt, dialogue, speaker, pronouns, custom_prompt)
-
-
-def build_history_prompt(user_prompt, dialogue, speaker=UNKNOWN_SPEAKER, pronouns=None):
-    """History user message: same structure as the live turn but without the custom rule."""
-    return _compose_request(user_prompt, dialogue, speaker, pronouns)

@@ -29,7 +29,7 @@ from default_params import (
     ROVER_SELF_OPTIONS,
     ROVER_TO_OTHER_OPTIONS,
     OTHER_SELF_OPTIONS,
-    OTHER_TO_ROVER_OPTIONS,
+    OTHER_TO_LISTENER_OPTIONS,
 )
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -271,8 +271,13 @@ class TranslatorApp:
         cfg = read_json("config.json")
         self._rover_self: Optional[str] = cfg.get("rover_self") or None
         self._rover_to_other: Optional[str] = cfg.get("rover_to_other") or None
+
+        # Per-speaker pronoun memory loaded from characters.json.
+        # key = speaker name, value = {"self": str|None, "to_listener": str|None}
+        self._speaker_prefs: Dict[str, Dict[str, Optional[str]]] = self._load_speaker_prefs()
+        # Transient slot reflecting whichever speaker the Other bar currently shows.
         self._other_self: Optional[str] = "tôi"
-        self._other_to_rover: Optional[str] = "bạn"
+        self._other_to_listener: Optional[str] = "bạn"
 
         # LRU translation cache
         self._cache: OrderedDict[str, str] = OrderedDict()
@@ -597,11 +602,11 @@ class TranslatorApp:
             style_pair=self._other_style_pair,
             start_row=2,
         )
-        self._other_to_rover_btns = self._make_pronoun_column(
+        self._other_to_listener_btns = self._make_pronoun_column(
             self.other_pronoun_frame,
-            OTHER_TO_ROVER_OPTIONS,
-            self._other_to_rover,
-            self._on_other_to_rover_click,
+            OTHER_TO_LISTENER_OPTIONS,
+            self._other_to_listener,
+            self._on_other_to_listener_click,
             col=1,
             style_pair=self._other_style_pair,
             start_row=2,
@@ -680,15 +685,64 @@ class TranslatorApp:
     def _on_other_self_click(self, pronoun: str) -> None:
         self._other_self = None if self._other_self == pronoun else pronoun
         self._refresh_pronoun_column(self._other_self_btns, self._other_self, self._other_style_pair)
+        self._save_current_speaker_prefs()
 
-    def _on_other_to_rover_click(self, pronoun: str) -> None:
-        self._other_to_rover = None if self._other_to_rover == pronoun else pronoun
-        self._refresh_pronoun_column(self._other_to_rover_btns, self._other_to_rover, self._other_style_pair)
+    def _on_other_to_listener_click(self, pronoun: str) -> None:
+        self._other_to_listener = None if self._other_to_listener == pronoun else pronoun
+        self._refresh_pronoun_column(self._other_to_listener_btns, self._other_to_listener, self._other_style_pair)
+        self._save_current_speaker_prefs()
 
     def _update_other_bar(self, speaker: str) -> None:
-        """Update the right bar header when speaker changes; keep current pronoun selections."""
+        """Update the right bar header and restore this speaker's saved pronouns
+        (or defaults on first encounter), then refresh the button highlights."""
         self.current_other_speaker = speaker
         self._other_header_var.set(speaker or AppConstants.NO_SPEAKER_LABEL)
+
+        prefs = self._speaker_prefs.get(speaker)
+        if prefs is not None:
+            self._other_self = prefs.get("self")
+            self._other_to_listener = prefs.get("to_listener")
+        else:
+            self._other_self = "tôi"
+            self._other_to_listener = "bạn"
+
+        self._refresh_pronoun_column(self._other_self_btns, self._other_self, self._other_style_pair)
+        self._refresh_pronoun_column(self._other_to_listener_btns, self._other_to_listener, self._other_style_pair)
+
+    def _load_speaker_prefs(self) -> Dict[str, Dict[str, Optional[str]]]:
+        raw = read_json("characters.json")
+        if not isinstance(raw, dict):
+            return {}
+        prefs: Dict[str, Dict[str, Optional[str]]] = {}
+        for name, entry in raw.items():
+            if not isinstance(entry, dict):
+                continue
+            prefs[name] = {
+                "self": entry.get("self_pronoun") or None,
+                "to_listener": entry.get("addressee_pronoun") or None,
+            }
+        return prefs
+
+    def _save_current_speaker_prefs(self) -> None:
+        """Persist the Other bar's current pronouns under the current speaker."""
+        speaker = self.current_other_speaker
+        if not speaker or speaker == "Rover" or speaker == AppConstants.UNKNOWN_SPEAKER:
+            return
+        self._speaker_prefs[speaker] = {
+            "self": self._other_self,
+            "to_listener": self._other_to_listener,
+        }
+        try:
+            raw = read_json("characters.json")
+            if not isinstance(raw, dict):
+                raw = {}
+            raw[speaker] = {
+                "self_pronoun": self._other_self or "",
+                "addressee_pronoun": self._other_to_listener or "",
+            }
+            write_json("characters.json", raw)
+        except Exception as e:
+            logger.warning(f"Failed to persist speaker prefs for '{speaker}': {e}")
 
     def _get_current_pronouns(self, speaker: str) -> Optional[dict]:
         """Build the pronouns dict to pass to the translator. Returns None for narration."""
@@ -698,9 +752,13 @@ class TranslatorApp:
             "rover_self": self._rover_self,
             "rover_to_other": self._rover_to_other,
         }
-        if speaker != "Rover":
+        if speaker == "Rover":
+            # Rover's listener is whoever the Other bar currently tracks.
+            pronouns["other_name"] = self.current_other_speaker
+        else:
+            pronouns["other_name"] = speaker
             pronouns["other_self"] = self._other_self
-            pronouns["other_to_rover"] = self._other_to_rover
+            pronouns["other_to_listener"] = self._other_to_listener
         return pronouns
 
     # ── Hotkey ────────────────────────────────────────────────────────────────
@@ -912,7 +970,7 @@ class TranslatorApp:
         self._refresh_pronoun_column(self._rover_self_btns, self._rover_self, self._rover_style_pair)
         self._refresh_pronoun_column(self._rover_to_other_btns, self._rover_to_other, self._rover_style_pair)
         self._refresh_pronoun_column(self._other_self_btns, self._other_self, self._other_style_pair)
-        self._refresh_pronoun_column(self._other_to_rover_btns, self._other_to_rover, self._other_style_pair)
+        self._refresh_pronoun_column(self._other_to_listener_btns, self._other_to_listener, self._other_style_pair)
 
     def _update_text_areas(self, original_text: str, translated_text: str) -> None:
         self.text_area.delete(1.0, tk.END)

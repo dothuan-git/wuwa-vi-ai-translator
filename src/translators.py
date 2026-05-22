@@ -1,3 +1,4 @@
+import logging
 import re
 import json
 import requests
@@ -5,12 +6,12 @@ import requests
 from utils import (
     read_json,
     build_prompt,
-    build_history_prompt,
     UNKNOWN_SPEAKER,
 )
-from default_params import DEFAULT_CONFIG
+from default_params import DEFAULT_CONFIG, build_system_prompt
 
-system_prompt = DEFAULT_CONFIG["system_prompt"]
+logger = logging.getLogger(__name__)
+
 user_prompt = DEFAULT_CONFIG["user_prompt"]
 
 _THINK_RE_CLOSED = re.compile(r'<think>.*?</think>', re.DOTALL)
@@ -36,43 +37,58 @@ def _speaker_of(item):
     return item[0] if len(item) == 3 else UNKNOWN_SPEAKER
 
 
-def _build_messages(dialogue, speaker, history, pronouns=None):
-    MAX_HISTORY = 3
-    MAX_ENTRY_LEN = 600
+def _build_history_block(history, max_items=3, max_chars=300):
+    """One-line-per-turn Vietnamese summary of recent translations, for voice and
+    vocabulary continuity. Returns "" when there's no usable history."""
+    if not history:
+        return ""
+    lines = []
+    for item in history[-max_items:]:
+        if len(item) == 3:
+            h_speaker, _h_orig, h_trans = item
+        else:
+            _h_orig, h_trans = item
+            h_speaker = UNKNOWN_SPEAKER
+        if not h_trans or not h_trans.strip():
+            continue
+        label = h_speaker if h_speaker and h_speaker != UNKNOWN_SPEAKER else "Narration"
+        lines.append(f"{label}: {_clip(h_trans, max_chars)}")
+    if not lines:
+        return ""
+    return "Recent translated lines (for voice and vocabulary continuity):\n" + "\n".join(lines)
 
+
+def _build_messages(dialogue, speaker, history, pronouns=None):
     history = history or []
 
-    sys_msg = system_prompt
+    # System prompt's PRONOUNS section is specialized to the live turn's speaker.
+    sys_msg = build_system_prompt(speaker)
     messages = [{"role": "system", "content": sys_msg}]
 
-    if history:
-        recent = history[-MAX_HISTORY:]
-        for item in recent:
-            if len(item) == 3:
-                h_speaker, h_orig, h_trans = item
-            else:
-                h_orig, h_trans = item
-                h_speaker = UNKNOWN_SPEAKER
-            messages.append({
-                "role": "user",
-                "content": build_history_prompt(
-                    user_prompt, _clip(h_orig, MAX_ENTRY_LEN), h_speaker, pronouns
-                ),
-            })
-            messages.append({"role": "assistant", "content": _clip(h_trans, MAX_ENTRY_LEN)})
+    live_user = build_prompt(user_prompt, dialogue, speaker, pronouns)
+    history_block = _build_history_block(history)
+    if history_block:
+        live_user = history_block + "\n\n" + live_user
 
-    messages.append({
-        "role": "user",
-        "content": build_prompt(user_prompt, dialogue, speaker, pronouns),
-    })
+    messages.append({"role": "user", "content": live_user})
     return messages
+
+
+def _log_prompt(provider, model, messages):
+    """Dump the full message stack about to be sent, one block per role."""
+    sep = "=" * 70
+    lines = [f"\n{sep}\nPROMPT  provider={provider}  model={model}\n{sep}"]
+    for m in messages:
+        lines.append(f"[{m['role']}]\n{m['content']}")
+    lines.append(sep)
+    logger.info("\n".join(lines))
 
 
 def translate_with_llama(dialogue, speaker="unknown", history=None, on_chunk=None, pronouns=None):
     """Translate dialogue via the configured AI provider.
 
     pronouns: dict with keys rover_self, rover_to_other, and optionally
-    other_self, other_to_rover. None for narration (no pronoun tags injected).
+    other_self, other_to_listener. None for narration (no pronoun tags injected).
 
     If on_chunk is provided, streams the response and calls on_chunk(partial_text)
     incrementally. Returns the final cleaned translation string.
@@ -87,6 +103,7 @@ def translate_with_llama(dialogue, speaker="unknown", history=None, on_chunk=Non
     model = config.get(f"{provider}_model", DEFAULT_CONFIG[f"{provider}_model"])
 
     messages = _build_messages(dialogue, speaker, history, pronouns)
+    _log_prompt(provider, model, messages)
 
     headers = {
         "Authorization": f"Bearer {api_key}",
